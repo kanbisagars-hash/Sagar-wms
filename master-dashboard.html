@@ -73,13 +73,14 @@
 <body>
 <div class="container">
     <div class="header">
-        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>Cloud Data | Multi-Device | Real-time</p></div>
+        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>INWARD + OUTWARD + RTO | Cloud Data</p></div>
         <div class="badge"><span class="live-dot"></span> CLOUD MODE <span id="syncTime"></span></div>
     </div>
 
     <div class="stats-grid">
         <div class="stat-card"><h4>📥 Total Inward</h4><div class="value" id="totalInward">0</div></div>
         <div class="stat-card"><h4>📤 Total Outward</h4><div class="value" id="totalOutward">0</div></div>
+        <div class="stat-card"><h4>🔄 Total RTO</h4><div class="value" id="totalRTO">0</div></div>
         <div class="stat-card"><h4>📦 Net Stock</h4><div class="value" id="netStock">0</div></div>
         <div class="stat-card"><h4>🏭 Active Depots</h4><div class="value" id="activeDepots">0</div></div>
     </div>
@@ -91,8 +92,19 @@
     </div>
 
     <div class="table-container">
-        <h3>📊 DEPOT-WISE STOCK SUMMARY</h3>
-        <table id="depotTable"><thead><tr><th>Depot</th><th>Inward</th><th>Outward</th><th>Net Stock</th><th>Status</th></tr></thead><tbody></tbody></table>
+        <h3>📊 DEPOT-WISE SUMMARY</h3>
+        <table id="depotTable">
+            <thead><tr><th>Depot</th><th>Inward</th><th>Outward</th><th>RTO</th><th>Net Stock</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="table-container">
+        <h3>📋 RECENT TRANSACTIONS</h3>
+        <table id="transTable">
+            <thead><tr><th>Date</th><th>Depot</th><th>Type</th><th>HUL/Basepack</th><th>Quantity</th><th>Details</th></tr></thead>
+            <tbody></tbody>
+        </table>
     </div>
 
     <div class="footer">☁️ Data from Google Sheet via SheetDB | Last updated: <span id="lastUpdate">--</span></div>
@@ -108,8 +120,7 @@
         try {
             const response = await fetch(SHEETDB_URL);
             const data = await response.json();
-            // Filter out header row if present
-            allData = data.filter(row => row.Depot && row.Depot !== 'Depot');
+            allData = data.filter(row => row.Type && row.Type !== 'Type');
             updateDashboard();
             document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
             document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
@@ -121,17 +132,22 @@
     
     function updateDashboard() {
         const depotData = depots.map(depot => {
-            const totalIn = allData.filter(i => i.Depot === depot).reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
-            const totalOut = 0;
-            const net = totalIn - totalOut;
-            return { depot, inward: totalIn, outward: totalOut, netStock: net };
+            const inward = allData.filter(i => i.Depot === depot && i.Type === 'INWARD').reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
+            const outward = allData.filter(i => i.Depot === depot && i.Type === 'OUTWARD').reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
+            const rto = allData.filter(i => i.Depot_User === depot && i.Type === 'RTO').length;
+            const net = inward - outward;
+            return { depot, inward, outward, rto, netStock: net };
         });
         
         const totalIn = depotData.reduce((s, d) => s + d.inward, 0);
+        const totalOut = depotData.reduce((s, d) => s + d.outward, 0);
+        const totalRTO = depotData.reduce((s, d) => s + d.rto, 0);
         const netStock = depotData.reduce((s, d) => s + d.netStock, 0);
-        const activeCount = depotData.filter(d => d.inward > 0).length;
+        const activeCount = depotData.filter(d => d.inward > 0 || d.outward > 0).length;
         
         document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
+        document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
+        document.getElementById('totalRTO').innerHTML = totalRTO;
         document.getElementById('netStock').innerHTML = netStock.toLocaleString();
         document.getElementById('activeDepots').innerHTML = activeCount;
         
@@ -141,6 +157,7 @@
                 <td><strong>${d.depot}</strong></td>
                 <td>${d.inward.toLocaleString()}</td>
                 <td>${d.outward.toLocaleString()}</td>
+                <td>${d.rto}</td>
                 <td><strong>${d.netStock.toLocaleString()}</strong></td>
                 <td>${d.netStock < 100 ? '<span class="status-not">⚠️ Low</span>' : '<span class="status-available">✅ Good</span>'}</td>
             </tr>
@@ -148,6 +165,20 @@
         
         const depotSelect = document.getElementById('depotFilter');
         depotSelect.innerHTML = '<option value="All">All Depots</option>' + depotData.map(d => `<option value="${d.depot}">${d.depot} (${d.netStock.toLocaleString()})</option>`).join('');
+        
+        // Recent transactions
+        const transTbody = document.querySelector('#transTable tbody');
+        const recent = [...allData].reverse().slice(0, 50);
+        transTbody.innerHTML = recent.map(t => `
+            <tr>
+                <td>${t.Upload_Date ? new Date(t.Upload_Date).toLocaleString() : '-'}</td>
+                <td>${t.Depot_User || t.Depot || '-'}</td>
+                <td><span class="${t.Type === 'INWARD' ? 'status-available' : 'status-not'}">${t.Type || '-'}</span></td>
+                <td>${t.HUL_Code || t.Basepack || '-'}</td>
+                <td>${t.Quantity || '-'}</td>
+                <td>${t.Remarks || t.AWB_Code || t.Attempt1_Status || '-'}</td>
+            </tr>
+        `).join('');
     }
     
     function downloadReport() {
@@ -155,7 +186,6 @@
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'All_Data');
         XLSX.writeFile(wb, `WMS_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
-        alert('📥 Report downloaded!');
     }
     
     loadData();
