@@ -114,13 +114,13 @@
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVJHrfWs2WpMxWMkWXVr6BIgS_UxaOrvvyCdN9hD6G0jjEre7A5ZK1MErmr-cme09N/exec';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcbOqv1zk7dS7M8zUydlJ_5KbqHjWec3PvTE33nIHiogGWdVYOw5q6p7x3ip2g_sNS/exec';
     const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
     let allInward = [], allOutward = [], allRTO = [];
     
     async function fetchData(depot, type) {
         try {
-            const url = `${SCRIPT_URL}?depot=${depot}&type=${type}`;
+            const url = `${SCRIPT_URL}?action=get&depot=${depot}&type=${type}`;
             const response = await fetch(url);
             const result = await response.json();
             return result.data || [];

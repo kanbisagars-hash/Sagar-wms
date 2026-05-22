@@ -144,10 +144,8 @@
 </div>
 
 <script>
-    // ========== GOOGLE APPS SCRIPT URL ==========
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVJHrfWs2WpMxWMkWXVr6BIgS_UxaOrvvyCdN9hD6G0jjEre7A5ZK1MErmr-cme09N/exec';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcbOqv1zk7dS7M8zUydlJ_5KbqHjWec3PvTE33nIHiogGWdVYOw5q6p7x3ip2g_sNS/exec';
     
-    // ========== DEPOT PASSWORDS ==========
     const depotPasswords = {
         "Bangalore": "bangalore123",
         "Chennai": "chennai456",
@@ -230,8 +228,8 @@
         document.getElementById('inwardFile').value = '';
     }
     
-    function generateUploadID(type) {
-        return `${currentDepot}_${type}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    function generateUploadID() {
+        return `${currentDepot}_Inward_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     }
     
     function parseFile(file, callback) {
@@ -255,13 +253,10 @@
             for (let i = 0; i < data.length; i++) {
                 const row = data[i];
                 
-                // Check all required fields
                 if (isBlank(row.Depot)) continue;
                 if (isBlank(row.Basepack)) continue;
-                
                 const qty = parseFloat(row.Quantity);
                 if (isNaN(qty) || qty <= 0) continue;
-                
                 if (isBlank(row.PKM)) continue;
                 if (isBlank(row.Expiry)) continue;
                 if (!isValidDate(row.Expiry)) continue;
@@ -285,23 +280,14 @@
                 return;
             }
             
-            const uploadID = generateUploadID('Inward');
+            const uploadID = generateUploadID();
             
             try {
                 showStatus('inwardStatus', '☁️ Uploading to cloud...', 'warning');
                 
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        depot: currentDepot,
-                        type: 'Inward',
-                        uploadID: uploadID,
-                        rows: validRows,
-                        timestamp: new Date().toISOString()
-                    })
-                });
+                const url = `${SCRIPT_URL}?action=upload&depot=${currentDepot}&type=Inward&uploadID=${uploadID}&rows=${encodeURIComponent(JSON.stringify(validRows))}&timestamp=${encodeURIComponent(new Date().toISOString())}`;
                 
+                const response = await fetch(url);
                 const result = await response.json();
                 
                 if (result.success) {
