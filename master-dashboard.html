@@ -9,7 +9,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: linear-gradient(135deg, #0a0a1a 0%, #050510 100%);
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             color: #eef5ff;
             padding: 20px;
         }
@@ -51,7 +51,7 @@
             background: rgba(5, 5, 20, 0.6);
             border-radius: 20px;
         }
-        .filter-group select, .filter-group input {
+        .filter-group select {
             background: #0a0a1a;
             border: 1px solid #2c3e5e;
             padding: 8px 15px;
@@ -82,7 +82,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>INWARD + OUTWARD + RTO | Live Data</p></div>
+        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>All 5 Depots | Inward + Outward + RTO</p></div>
         <div class="badge"><span class="live-dot"></span> LIVE <span id="syncTime"></span></div>
     </div>
 
@@ -96,37 +96,53 @@
     <div class="filter-bar">
         <div class="filter-group"><label>Depot</label><select id="depotFilter"><option value="All">All Depots</option></select></div>
         <div class="filter-group"><label>Type</label><select id="typeFilter"><option value="All">All Types</option><option value="INWARD">INWARD</option><option value="OUTWARD">OUTWARD</option><option value="RTO">RTO</option></select></div>
-        <button class="btn-primary" onclick="loadData()">🔄 Refresh</button>
+        <button class="btn-primary" onclick="loadAllData()">🔄 Refresh</button>
         <button class="btn-primary" onclick="downloadReport()">📥 Download Excel</button>
     </div>
 
     <div class="table-container">
-        <h3>📊 DATA TABLE</h3>
+        <h3>📊 ALL TRANSACTIONS</h3>
         <table id="dataTable">
             <thead id="tableHeader"></thead>
             <tbody id="tableBody"></tbody>
         </table>
     </div>
 
-    <div class="footer">☁️ Data from Google Sheet | Last updated: <span id="lastUpdate">--</span></div>
+    <div class="footer">☁️ Data from Google Sheets | Last updated: <span id="lastUpdate">--</span></div>
 </div>
 
 <script>
-    const SHEETDB_URL = 'https://sheetdb.io/api/v1/y1k27fv4roasn';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRclDP2FIOOFtBDnTp_HqKgo5mo2tIQ5WNz77gPjSFV0LZxdeHS0yWOdQSbJFO8IfJ/exec';
+    const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
+    const types = ['INWARD', 'OUTWARD', 'RTO'];
     let allData = [];
     
-    async function loadData() {
-        document.getElementById('syncTime').innerHTML = '🔄 Syncing...';
+    async function fetchSheetData(depot, type) {
         try {
-            const response = await fetch(SHEETDB_URL);
-            allData = await response.json();
-            allData = allData.filter(row => row.Type && row.Type !== 'Type');
-            updateDashboard();
-            document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
-            document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
+            const url = `${SCRIPT_URL}?depot=${depot}&type=${type}`;
+            const response = await fetch(url);
+            const result = await response.json();
+            return (result.data || []).map(row => ({ ...row, Depot_Name: depot, Type: type }));
         } catch (err) {
-            document.getElementById('syncTime').innerHTML = '❌ Error';
+            console.error(`Error fetching ${depot} ${type}:`, err);
+            return [];
         }
+    }
+    
+    async function loadAllData() {
+        document.getElementById('syncTime').innerHTML = '🔄 Syncing all depots...';
+        allData = [];
+        
+        for (const depot of depots) {
+            for (const type of types) {
+                const data = await fetchSheetData(depot, type);
+                allData.push(...data);
+            }
+        }
+        
+        updateDashboard();
+        document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
+        document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
     }
     
     function updateDashboard() {
@@ -135,36 +151,34 @@
         
         let filtered = allData;
         if (typeFilter !== 'All') filtered = filtered.filter(d => d.Type === typeFilter);
-        if (depotFilter !== 'All') filtered = filtered.filter(d => d.Depot === depotFilter || d.Depot_User === depotFilter);
+        if (depotFilter !== 'All') filtered = filtered.filter(d => d.Depot_Name === depotFilter);
         
-        const totalIn = allData.filter(d => d.Type === 'INWARD').reduce((s, d) => s + (Number(d['Challan Qty'] || d.Challan_Qty || d.Quantity || 0)), 0);
-        const totalOut = allData.filter(d => d.Type === 'OUTWARD').reduce((s, d) => s + (Number(d['Dispatches QTY'] || d.Dispatches_QTY || d.Quantity || 0)), 0);
+        const totalIn = allData.filter(d => d.Type === 'INWARD').reduce((s, d) => s + (Number(d['Challan Qty'] || d.Challan_Qty || 0)), 0);
+        const totalOut = allData.filter(d => d.Type === 'OUTWARD').reduce((s, d) => s + (Number(d['Dispatches QTY'] || d.Dispatches_QTY || 0)), 0);
         const totalRTO = allData.filter(d => d.Type === 'RTO').length;
-        const netStock = totalIn - totalOut;
         
         document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
         document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
         document.getElementById('totalRTO').innerHTML = totalRTO;
-        document.getElementById('netStock').innerHTML = netStock.toLocaleString();
+        document.getElementById('netStock').innerHTML = (totalIn - totalOut).toLocaleString();
         
-        // Dynamic table
+        // Update depot filter dropdown
+        const depotSelect = document.getElementById('depotFilter');
+        depotSelect.innerHTML = '<option value="All">All Depots</option>' + depots.map(d => `<option value="${d}">${d}</option>`).join('');
+        
         if (filtered.length === 0) {
             document.getElementById('tableHeader').innerHTML = '<tr><th>No Data</th></tr>';
-            document.getElementById('tableBody').innerHTML = '<tr><td>Upload data from depot panel</td></tr>';
+            document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">No data found. Please upload data from depot panels.</td></tr>';
             return;
         }
         
         const allKeys = [...new Set(filtered.flatMap(row => Object.keys(row)))];
-        const displayKeys = allKeys.filter(k => !['Upload_Date', 'Depot_User', 'Type'].includes(k));
+        const displayKeys = allKeys.filter(k => !['Depot_Name'].includes(k));
         
         document.getElementById('tableHeader').innerHTML = `<tr>${displayKeys.map(k => `<th>${k}</th>`).join('')}</tr>`;
-        document.getElementById('tableBody').innerHTML = filtered.slice(0, 200).map(row => 
-            `<tr>${displayKeys.map(k => `<td>${row[k] || ''}</td>`).join('')}</tr>`
+        document.getElementById('tableBody').innerHTML = filtered.slice(0, 500).map(row => 
+            `<tr>${displayKeys.map(k => `<td>${row[k] !== undefined && row[k] !== null ? row[k] : ''}</td>`).join('')}</tr>`
         ).join('');
-        
-        const depotSelect = document.getElementById('depotFilter');
-        const depots = [...new Set(allData.map(d => d.Depot || d.Depot_User).filter(Boolean))];
-        depotSelect.innerHTML = '<option value="All">All Depots</option>' + depots.map(d => `<option value="${d}">${d}</option>`).join('');
     }
     
     function downloadReport() {
@@ -172,13 +186,14 @@
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'All_Data');
         XLSX.writeFile(wb, `WMS_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
+        alert('📥 Report downloaded!');
     }
     
     document.getElementById('typeFilter').addEventListener('change', () => updateDashboard());
     document.getElementById('depotFilter').addEventListener('change', () => updateDashboard());
     
-    loadData();
-    setInterval(loadData, 30000);
+    loadAllData();
+    setInterval(loadAllData, 60000);
 </script>
 </body>
 </html>

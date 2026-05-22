@@ -9,7 +9,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: linear-gradient(135deg, #0a0a1a 0%, #050510 100%);
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             color: #eef5ff;
             padding: 20px;
         }
@@ -23,6 +23,7 @@
             border-bottom: 2px solid #2effbc;
         }
         .header h1 { background: linear-gradient(135deg, #fff, #2effbc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .header p { font-size: 0.8rem; color: #8fa3c2; margin-top: 8px; }
         .login-box, .upload-box {
             background: rgba(15, 25, 45, 0.7);
             border-radius: 20px;
@@ -65,19 +66,19 @@
 <div class="container">
     <div class="header">
         <h1>◈ LAKMÉ WMS | DEPOT UPLOAD</h1>
-        <p>INWARD | OUTWARD | RTO | Blank values allowed</p>
+        <p>📥 Inward | 📤 Outward | 🔄 RTO | Data goes to: Depot_Inward, Depot_Outward, Depot_RTO</p>
     </div>
 
     <div id="loginSection" class="login-box">
         <select id="depotSelect">
-            <option value="">Select Depot</option>
-            <option value="Bangalore">Bangalore</option>
-            <option value="Chennai">Chennai</option>
-            <option value="Kolkata">Kolkata</option>
-            <option value="Delhi">Delhi</option>
-            <option value="Mumbai">Mumbai</option>
+            <option value="">Select Your Depot</option>
+            <option value="Bangalore">🏭 Bangalore Depot</option>
+            <option value="Chennai">🏭 Chennai Depot</option>
+            <option value="Kolkata">🏭 Kolkata Depot</option>
+            <option value="Delhi">🏭 Delhi Depot</option>
+            <option value="Mumbai">🏭 Mumbai Depot</option>
         </select>
-        <input type="password" id="passwordInput" placeholder="Password">
+        <input type="password" id="passwordInput" placeholder="Enter Password">
         <button onclick="login()">Login</button>
         <div id="loginStatus" class="status"></div>
     </div>
@@ -94,17 +95,17 @@
             
             <h3>📥 INWARD</h3>
             <input type="file" id="inwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadInward()">Upload Inward</button>
+            <button onclick="uploadData('INWARD')">Upload Inward</button>
             <div id="inwardStatus" class="status"></div>
 
             <h3>📤 OUTWARD</h3>
             <input type="file" id="outwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadOutward()">Upload Outward</button>
+            <button onclick="uploadData('OUTWARD')">Upload Outward</button>
             <div id="outwardStatus" class="status"></div>
 
             <h3>🔄 RTO</h3>
             <input type="file" id="rtoFile" accept=".csv,.xlsx">
-            <button onclick="uploadRTO()">Upload RTO</button>
+            <button onclick="uploadData('RTO')">Upload RTO</button>
             <div id="rtoStatus" class="status"></div>
 
             <button onclick="logout()" class="logout-btn">Logout</button>
@@ -113,7 +114,8 @@
 </div>
 
 <script>
-    const SHEETDB_URL = 'https://sheetdb.io/api/v1/y1k27fv4roasn';
+    // ========== YOUR APPS SCRIPT URL ==========
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRclDP2FIOOFtBDnTp_HqKgo5mo2tIQ5WNz77gPjSFV0LZxdeHS0yWOdQSbJFO8IfJ/exec';
     
     const depotPasswords = {
         "Bangalore": "bangalore123",
@@ -158,7 +160,7 @@
             currentDepot = depot;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('uploadSection').style.display = 'block';
-            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}`;
+            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}<br>📁 Data will go to: ${depot}_Inward, ${depot}_Outward, ${depot}_RTO sheets`;
             showStatus('loginStatus', 'Login success!', 'success');
         } else {
             showStatus('loginStatus', 'Invalid password', 'error');
@@ -169,6 +171,9 @@
         currentDepot = null;
         document.getElementById('loginSection').style.display = 'block';
         document.getElementById('uploadSection').style.display = 'none';
+        document.getElementById('inwardFile').value = '';
+        document.getElementById('outwardFile').value = '';
+        document.getElementById('rtoFile').value = '';
     }
     
     function parseFile(file, callback) {
@@ -182,88 +187,47 @@
         reader.readAsArrayBuffer(file);
     }
     
-    async function uploadToSheet(rows, type) {
-        try {
-            const response = await fetch(SHEETDB_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: rows })
-            });
-            return response.ok;
-        } catch (err) {
-            return false;
+    async function uploadData(type) {
+        let fileInput, statusId;
+        if (type === 'INWARD') {
+            fileInput = document.getElementById('inwardFile');
+            statusId = 'inwardStatus';
+        } else if (type === 'OUTWARD') {
+            fileInput = document.getElementById('outwardFile');
+            statusId = 'outwardStatus';
+        } else {
+            fileInput = document.getElementById('rtoFile');
+            statusId = 'rtoStatus';
         }
-    }
-    
-    function uploadInward() {
-        const file = document.getElementById('inwardFile').files[0];
+        
+        const file = fileInput.files[0];
         if (!file) { alert('Select file'); return; }
         
         parseFile(file, async (data) => {
-            const rows = data.map(row => ({
-                Type: 'INWARD',
-                ...row,
-                Depot: row.Depot || currentDepot,
-                Upload_Date: new Date().toISOString(),
-                Depot_User: currentDepot
-            }));
+            showStatus(statusId, `Uploading ${data.length} rows to ${currentDepot}_${type}...`, 'warning');
             
-            showStatus('inwardStatus', `Uploading ${rows.length} rows...`, 'warning');
-            const success = await uploadToSheet(rows, 'INWARD');
-            if (success) {
-                showStatus('inwardStatus', `✅ ${rows.length} rows uploaded!`, 'success');
-            } else {
-                showStatus('inwardStatus', '❌ Upload failed', 'error');
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        depot: currentDepot,
+                        type: type,
+                        rows: data
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(statusId, `✅ ${data.length} rows saved to ${currentDepot}_${type}!`, 'success');
+                } else {
+                    showStatus(statusId, `❌ Upload failed: ${result.error}`, 'error');
+                }
+            } catch (err) {
+                showStatus(statusId, `❌ Error: ${err.message}`, 'error');
             }
-            document.getElementById('inwardFile').value = '';
-        });
-    }
-    
-    function uploadOutward() {
-        const file = document.getElementById('outwardFile').files[0];
-        if (!file) { alert('Select file'); return; }
-        
-        parseFile(file, async (data) => {
-            const rows = data.map(row => ({
-                Type: 'OUTWARD',
-                ...row,
-                Depot: row.Depot || currentDepot,
-                Upload_Date: new Date().toISOString(),
-                Depot_User: currentDepot
-            }));
             
-            showStatus('outwardStatus', `Uploading ${rows.length} rows...`, 'warning');
-            const success = await uploadToSheet(rows, 'OUTWARD');
-            if (success) {
-                showStatus('outwardStatus', `✅ ${rows.length} rows uploaded!`, 'success');
-            } else {
-                showStatus('outwardStatus', '❌ Upload failed', 'error');
-            }
-            document.getElementById('outwardFile').value = '';
-        });
-    }
-    
-    function uploadRTO() {
-        const file = document.getElementById('rtoFile').files[0];
-        if (!file) { alert('Select file'); return; }
-        
-        parseFile(file, async (data) => {
-            const rows = data.map(row => ({
-                Type: 'RTO',
-                ...row,
-                Depot: row.Depot || currentDepot,
-                Upload_Date: new Date().toISOString(),
-                Depot_User: currentDepot
-            }));
-            
-            showStatus('rtoStatus', `Uploading ${rows.length} rows...`, 'warning');
-            const success = await uploadToSheet(rows, 'RTO');
-            if (success) {
-                showStatus('rtoStatus', `✅ ${rows.length} rows uploaded!`, 'success');
-            } else {
-                showStatus('rtoStatus', '❌ Upload failed', 'error');
-            }
-            document.getElementById('rtoFile').value = '';
+            fileInput.value = '';
         });
     }
 </script>
