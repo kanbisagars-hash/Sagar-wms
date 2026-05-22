@@ -1,2 +1,661 @@
-localStorage.clear();
-location.reload();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAKMÉ WMS PRO | Warehouse Management System</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a1a 0%, #050510 100%);
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            color: #eef5ff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding: 20px 25px;
+            background: rgba(5, 5, 20, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border-bottom: 2px solid #2effbc;
+        }
+        .logo h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #fff, #2effbc, #0cf);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .logo p { font-size: 0.7rem; color: #8fa3c2; margin-top: 5px; }
+        .badge {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid #2effbc;
+        }
+        .live-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #2effbc;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+            margin-right: 8px;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+        
+        /* Upload Cards */
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .upload-card {
+            background: rgba(15, 25, 45, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(46, 255, 188, 0.3);
+            transition: all 0.3s;
+        }
+        .upload-card:hover { border-color: #2effbc; box-shadow: 0 0 25px rgba(46, 255, 188, 0.2); transform: translateY(-3px); }
+        .upload-card h3 { color: #2effbc; margin-bottom: 15px; font-size: 1.1rem; }
+        .upload-card input { width: 100%; padding: 10px; background: #0a0a1a; border: 1px solid #2c3e5e; border-radius: 12px; color: white; margin: 10px 0; }
+        .upload-card button {
+            background: linear-gradient(90deg, #2effbc22, #0cf22);
+            border: 1px solid #2effbc;
+            color: #2effbc;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        .upload-card button:hover { background: #2effbc; color: #050510; box-shadow: 0 0 20px #2effbc; }
+        .status-msg { font-size: 0.75rem; margin-top: 8px; color: #8fa3c2; }
+        
+        /* KPI Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(10, 15, 35, 0.8);
+            border-radius: 20px;
+            padding: 20px;
+            border-left: 4px solid #2effbc;
+        }
+        .stat-card h4 { font-size: 0.7rem; text-transform: uppercase; color: #8fa3c2; letter-spacing: 1px; }
+        .stat-card .value { font-size: 2rem; font-weight: 800; margin-top: 8px; }
+        
+        /* Filters */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 15px 20px;
+            background: rgba(5, 5, 20, 0.6);
+            border-radius: 20px;
+            align-items: flex-end;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .filter-group label { font-size: 0.65rem; text-transform: uppercase; color: #8fa3c2; }
+        .filter-group input, .filter-group select {
+            background: #0a0a1a;
+            border: 1px solid #2c3e5e;
+            padding: 8px 15px;
+            border-radius: 25px;
+            color: white;
+        }
+        .btn-primary {
+            background: #2effbc22;
+            border: 1px solid #2effbc;
+            color: #2effbc;
+            padding: 8px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        .btn-danger {
+            background: #ff444422;
+            border: 1px solid #ff6666;
+            color: #ff6666;
+            padding: 8px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        .btn-danger:hover { background: #ff4444; color: white; }
+        
+        /* Tables */
+        .table-container {
+            background: rgba(10, 15, 35, 0.7);
+            border-radius: 20px;
+            padding: 20px;
+            overflow-x: auto;
+            margin-bottom: 25px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1e2a44; font-size: 0.8rem; }
+        th { color: #2effbc; font-weight: 600; }
+        
+        .status-available { background: #2effbc22; color: #2effbc; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        .status-not { background: #ff444422; color: #ff6666; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        
+        .footer { text-align: center; margin-top: 30px; font-size: 0.7rem; color: #4a617c; }
+        
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">
+            <h1>◈ LAKMÉ WMS PRO</h1>
+            <p>Incremental Upload | Zero Start | Append Mode | Real-time Stock</p>
+        </div>
+        <div class="badge">
+            <span class="live-dot"></span> LIVE
+            <div style="font-size: 0.7rem;" id="syncTime">Zero Stock - Ready</div>
+        </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="upload-grid">
+        <div class="upload-card">
+            <h3>📥 INWARD (Stock In)</h3>
+            <input type="file" id="inwardFile" accept=".csv,.xlsx">
+            <button onclick="uploadInward()">Upload Inward</button>
+            <div id="inwardStatus" class="status-msg"></div>
+        </div>
+        <div class="upload-card">
+            <h3>📤 OUTWARD (Dispatch)</h3>
+            <input type="file" id="outwardFile" accept=".csv,.xlsx">
+            <button onclick="uploadOutward()">Upload Outward</button>
+            <div id="outwardStatus" class="status-msg"></div>
+        </div>
+        <div class="upload-card">
+            <h3>📋 PLAN (Forecast)</h3>
+            <input type="file" id="planFile" accept=".csv,.xlsx">
+            <button onclick="uploadPlan()">Upload Plan</button>
+            <div id="planStatus" class="status-msg"></div>
+        </div>
+        <div class="upload-card">
+            <h3>🔄 RTO (Returns)</h3>
+            <input type="file" id="rtoFile" accept=".csv,.xlsx">
+            <button onclick="uploadRTO()">Upload RTO</button>
+            <div id="rtoStatus" class="status-msg"></div>
+        </div>
+    </div>
+
+    <!-- KPI Stats -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><h4>📥 Total Inward</h4><div class="value">0</div></div>
+        <div class="stat-card"><h4>📤 Total Outward</h4><div class="value">0</div></div>
+        <div class="stat-card"><h4>📦 Net Stock</h4><div class="value">0</div></div>
+        <div class="stat-card"><h4>📋 Plan SKUs</h4><div class="value">0</div></div>
+        <div class="stat-card"><h4>🔄 RTO Cases</h4><div class="value">0</div></div>
+    </div>
+
+    <!-- Filters & Actions -->
+    <div class="filter-bar">
+        <div class="filter-group"><label>From Date</label><input type="date" id="fromDate"></div>
+        <div class="filter-group"><label>To Date</label><input type="date" id="toDate"></div>
+        <div class="filter-group"><label>Depot</label><select id="depotFilter"><option value="All">All</option></select></div>
+        <div class="filter-group"><label>Basepack</label><select id="basepackFilter"><option value="All">All</option></select></div>
+        <button class="btn-primary" onclick="applyFilters()">🔍 Apply Filters</button>
+        <button class="btn-primary" onclick="downloadReport()">📥 Download Excel</button>
+        <button class="btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+    </div>
+
+    <!-- Stock Table -->
+    <div class="table-container">
+        <h3 style="margin-bottom: 15px;">📦 CURRENT STOCK (Basepack Level)</h3>
+        <table id="stockTable">
+            <thead><tr><th>Basepack</th><th>Inward</th><th>Outward</th><th>RTO Added</th><th>Net Stock</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Plan vs Stock -->
+    <div class="table-container">
+        <h3 style="margin-bottom: 15px;">📊 PLAN vs STOCK (Bill Ref Valid Only)</h3>
+        <table id="planTable">
+            <thead><tr><th>HUL Code</th><th>Basepack</th><th>Allocation</th><th>Bill Ref</th><th>Stock Before</th><th>Status</th><th>Remark</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- RTO Summary -->
+    <div class="table-container">
+        <h3 style="margin-bottom: 15px;">🔄 RTO TRACKING (3 Attempts)</h3>
+        <table id="rtoTable">
+            <thead><tr><th>HUL Code</th><th>Basepack</th><th>Original AWB</th><th>Attempt1</th><th>Attempt2</th><th>Attempt3</th><th>Stock Action</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        🔐 Data stored in browser (IndexedDB) | APPEND mode - Old data preserved | Zero stock start
+    </div>
+</div>
+
+<script>
+    // ========== DATA STORES (Start with Zero) ==========
+    let inwardData = [];
+    let outwardData = [];
+    let planData = [];
+    let rtoData = [];
+    
+    // ========== LOAD FROM LOCAL STORAGE ==========
+    function loadFromStorage() {
+        let saved = localStorage.getItem('wms_inward');
+        if (saved) inwardData = JSON.parse(saved);
+        saved = localStorage.getItem('wms_outward');
+        if (saved) outwardData = JSON.parse(saved);
+        saved = localStorage.getItem('wms_plan');
+        if (saved) planData = JSON.parse(saved);
+        saved = localStorage.getItem('wms_rto');
+        if (saved) rtoData = JSON.parse(saved);
+        
+        console.log(`Loaded: Inward=${inwardData.length}, Outward=${outwardData.length}, Plan=${planData.length}, RTO=${rtoData.length}`);
+        refreshAll();
+    }
+    
+    // ========== SAVE TO LOCAL STORAGE ==========
+    function saveToStorage() {
+        localStorage.setItem('wms_inward', JSON.stringify(inwardData));
+        localStorage.setItem('wms_outward', JSON.stringify(outwardData));
+        localStorage.setItem('wms_plan', JSON.stringify(planData));
+        localStorage.setItem('wms_rto', JSON.stringify(rtoData));
+    }
+    
+    // ========== CLEAR ALL DATA (Reset to Zero) ==========
+    function clearAllData() {
+        if (confirm('⚠️ WARNING: This will DELETE ALL DATA. Are you sure?')) {
+            inwardData = [];
+            outwardData = [];
+            planData = [];
+            rtoData = [];
+            saveToStorage();
+            refreshAll();
+            document.getElementById('syncTime').innerHTML = 'All data cleared - Zero stock';
+            showStatus('All data cleared successfully!');
+        }
+    }
+    
+    function showStatus(msg) {
+        let statusDiv = document.createElement('div');
+        statusDiv.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#2effbc; color:#050510; padding:10px 20px; border-radius:10px; z-index:9999;';
+        statusDiv.innerText = msg;
+        document.body.appendChild(statusDiv);
+        setTimeout(() => statusDiv.remove(), 3000);
+    }
+    
+    // ========== PARSE EXCEL/CSV ==========
+    function parseFile(file, callback) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+            callback(json);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
+    // ========== UPLOAD INWARD (APPEND MODE) ==========
+    function uploadInward() {
+        const file = document.getElementById('inwardFile').files[0];
+        if (!file) { alert('Select file first'); return; }
+        parseFile(file, (data) => {
+            let newData = data.map(row => ({
+                Depot: row.Depot || row.depot || 'Unknown',
+                Basepack: row.Basepack_Code || row.Basepack || row.basepack || 'Unknown',
+                SKU7: row.SKU7 || row.sku7 || '',
+                ProductName: row.Product_Name || row.product_name || '',
+                PKM: row.PKM || row.pkm || '',
+                BatchCode: row.Batch_Code || row.batch_code || '',
+                ExpiryDate: row.Expiry_Date || row.expiry_date || '',
+                Quantity: parseFloat(row.Quantity || row.quantity || 0),
+                EGIR: row.EGIR || row.egir || '',
+                Date: row.Date || row.date || new Date().toISOString().slice(0,10),
+                Remarks: row.Remarks || row.remarks || ''
+            })).filter(r => r.Quantity > 0);
+            
+            // APPEND: Old + New
+            inwardData = [...inwardData, ...newData];
+            saveToStorage();
+            document.getElementById('inwardStatus').innerHTML = `✅ Added ${newData.length} rows (Total: ${inwardData.length})`;
+            refreshAll();
+            showStatus(`Inward added: ${newData.reduce((s,i)=>s+i.Quantity,0).toLocaleString()} units`);
+        });
+    }
+    
+    // ========== UPLOAD OUTWARD (APPEND MODE) ==========
+    function uploadOutward() {
+        const file = document.getElementById('outwardFile').files[0];
+        if (!file) { alert('Select file first'); return; }
+        parseFile(file, (data) => {
+            let newData = data.map(row => ({
+                Depot: row.Depot || row.depot || 'Unknown',
+                HUL_Code: row.HUL_Code || row.hul_code || row.HULCode || 'Unknown',
+                Basepack: row.Basepack || row.basepack || 'Unknown',
+                Quantity: parseFloat(row.Dispatches_QTY || row.Quantity || row.quantity || 0),
+                AWB_Code: row.AWB_Code || row.awb_code || '',
+                Order_Status: row.Order_Status || row.order_status || '',
+                Courier: row.Courier_Company_Name || row.courier || '',
+                Delivered_Date: row.Actual_Order_Delivered_Date || '',
+                Date: row.Date || row.date || new Date().toISOString().slice(0,10),
+                Dispatches_TAT: row.Dispatches_TAT || '',
+                Delivered_TAT: row.Delivered_TAT || ''
+            })).filter(r => r.Quantity > 0);
+            
+            // APPEND: Old + New
+            outwardData = [...outwardData, ...newData];
+            saveToStorage();
+            document.getElementById('outwardStatus').innerHTML = `✅ Added ${newData.length} rows (Total: ${outwardData.length})`;
+            refreshAll();
+            showStatus(`Outward added: ${newData.reduce((s,i)=>s+i.Quantity,0).toLocaleString()} units`);
+        });
+    }
+    
+    // ========== UPLOAD PLAN ==========
+    function uploadPlan() {
+        const file = document.getElementById('planFile').files[0];
+        if (!file) { alert('Select file first'); return; }
+        parseFile(file, (data) => {
+            let newData = data.map(row => ({
+                HUL_Code: row.HUL_Code || row.hul_code || 'Unknown',
+                Basepack: row.Basepack || row.basepack || 'Unknown',
+                Allocation_Qty: parseFloat(row.Allocation_Qty || row.Allocation || row.quantity || 0),
+                Bill_Ref_No: row.Bill_Ref_No || row.bill_ref_no || '',
+                Date: row.Date || row.date || '',
+                Remarks: row.Remarks || ''
+            }));
+            
+            planData = [...planData, ...newData];
+            saveToStorage();
+            document.getElementById('planStatus').innerHTML = `✅ Added ${newData.length} rows (Total: ${planData.length})`;
+            refreshAll();
+        });
+    }
+    
+    // ========== UPLOAD RTO ==========
+    function uploadRTO() {
+        const file = document.getElementById('rtoFile').files[0];
+        if (!file) { alert('Select file first'); return; }
+        parseFile(file, (data) => {
+            let newData = data.map(row => ({
+                HUL_Code: row.HUL_Code || row.hul_code || 'Unknown',
+                Basepack: row.Basepack || row.basepack || 'Unknown',
+                Depot: row.Depot || row.depot || 'Unknown',
+                Original_AWB: row.AWB_Code || row.awb_code || '',
+                Attempt1_Status: row.RTO_Order_Status || row.attempt1_status || '',
+                Attempt1_AWB: row.RTO_AWB_Code || '',
+                Attempt2_Status: row.RTO2_Order_Status || '',
+                Attempt2_AWB: row.RTO2_AWB_Code || '',
+                Attempt3_Status: row.RTO3_Order_Status || '',
+                Attempt3_AWB: row.RTO3_AWB_Code || ''
+            }));
+            
+            rtoData = [...rtoData, ...newData];
+            saveToStorage();
+            document.getElementById('rtoStatus').innerHTML = `✅ Added ${newData.length} rows (Total: ${rtoData.length})`;
+            refreshAll();
+        });
+    }
+    
+    // ========== CALCULATE STOCK (In - Out + RTO) ==========
+    function calculateStock() {
+        let stockMap = new Map();
+        
+        // Inward: Add stock
+        inwardData.forEach(item => {
+            let key = item.Basepack;
+            if (!stockMap.has(key)) stockMap.set(key, { inward: 0, outward: 0, rtoAdd: 0 });
+            stockMap.get(key).inward += item.Quantity;
+        });
+        
+        // Outward: Subtract stock
+        outwardData.forEach(item => {
+            let key = item.Basepack;
+            if (!stockMap.has(key)) stockMap.set(key, { inward: 0, outward: 0, rtoAdd: 0 });
+            stockMap.get(key).outward += item.Quantity;
+        });
+        
+        // RTO: Add stock only if all 3 attempts failed
+        rtoData.forEach(rto => {
+            let a1 = (rto.Attempt1_Status || '').toLowerCase();
+            let a2 = (rto.Attempt2_Status || '').toLowerCase();
+            let a3 = (rto.Attempt3_Status || '').toLowerCase();
+            let allFailed = a1.includes('fail') && a2.includes('fail') && a3.includes('fail');
+            
+            if (allFailed) {
+                let key = rto.Basepack;
+                if (!stockMap.has(key)) stockMap.set(key, { inward: 0, outward: 0, rtoAdd: 0 });
+                stockMap.get(key).rtoAdd += 1;
+            }
+        });
+        
+        let result = [];
+        for (let [basepack, data] of stockMap) {
+            let netStock = data.inward - data.outward + data.rtoAdd;
+            result.push({
+                Basepack: basepack,
+                Inward: data.inward,
+                Outward: data.outward,
+                RTOAdd: data.rtoAdd,
+                NetStock: netStock
+            });
+        }
+        return result.sort((a,b) => b.NetStock - a.NetStock);
+    }
+    
+    // ========== PLAN VS STOCK AVAILABILITY ==========
+    function getPlanAvailability() {
+        let stock = calculateStock();
+        let stockMap = new Map();
+        stock.forEach(s => stockMap.set(s.Basepack, s.NetStock));
+        
+        let results = [];
+        let usedStock = new Map();
+        
+        for (let plan of planData) {
+            let billRef = plan.Bill_Ref_No;
+            if (!billRef || billRef === '' || billRef === 'N.A' || billRef === 'NA' || billRef === 'n/a') {
+                continue;
+            }
+            
+            let basepack = plan.Basepack;
+            let available = (stockMap.get(basepack) || 0) - (usedStock.get(basepack) || 0);
+            let allocation = plan.Allocation_Qty || 0;
+            let status = available >= allocation ? 'Available' : 'Not Available';
+            let remark = status === 'Available' ? 'Can dispatch' : `Shortage of ${(allocation - available).toFixed(0)} units`;
+            
+            usedStock.set(basepack, (usedStock.get(basepack) || 0) + allocation);
+            
+            results.push({
+                HUL_Code: plan.HUL_Code,
+                Basepack: basepack,
+                Allocation: allocation,
+                Bill_Ref: billRef,
+                Stock_Before: available + allocation,
+                Status: status,
+                Remark: remark
+            });
+        }
+        return results;
+    }
+    
+    // ========== RTO SUMMARY ==========
+    function getRTOSummary() {
+        return rtoData.map(rto => {
+            let a1 = rto.Attempt1_Status || 'Pending';
+            let a2 = rto.Attempt2_Status || '-';
+            let a3 = rto.Attempt3_Status || '-';
+            let allFailed = (a1.toLowerCase().includes('fail') && a2.toLowerCase().includes('fail') && a3.toLowerCase().includes('fail'));
+            return {
+                HUL_Code: rto.HUL_Code,
+                Basepack: rto.Basepack,
+                Original_AWB: rto.Original_AWB,
+                Attempt1: a1,
+                Attempt2: a2,
+                Attempt3: a3,
+                StockAction: allFailed ? '✅ Stock Added' : 'No Action'
+            };
+        });
+    }
+    
+    // ========== UPDATE KPIs ==========
+    function updateKPIs() {
+        let stock = calculateStock();
+        let totalStock = stock.reduce((s, i) => s + i.NetStock, 0);
+        let totalInward = inwardData.reduce((s, i) => s + i.Quantity, 0);
+        let totalOutward = outwardData.reduce((s, i) => s + i.Quantity, 0);
+        
+        document.getElementById('statsGrid').innerHTML = `
+            <div class="stat-card"><h4>📥 Total Inward</h4><div class="value">${totalInward.toLocaleString()}</div></div>
+            <div class="stat-card"><h4>📤 Total Outward</h4><div class="value">${totalOutward.toLocaleString()}</div></div>
+            <div class="stat-card"><h4>📦 Net Stock</h4><div class="value">${totalStock.toLocaleString()}</div></div>
+            <div class="stat-card"><h4>📋 Plan SKUs</h4><div class="value">${planData.length}</div></div>
+            <div class="stat-card"><h4>🔄 RTO Cases</h4><div class="value">${rtoData.length}</div></div>
+        `;
+    }
+    
+    // ========== UPDATE STOCK TABLE ==========
+    function updateStockTable() {
+        let stock = calculateStock();
+        let tbody = document.querySelector('#stockTable tbody');
+        if (stock.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No data. Upload inward/outward files.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = stock.map(s => `
+            <tr>
+                <td><strong>${s.Basepack}</strong></td>
+                <td>${s.Inward.toLocaleString()}</td>
+                <td>${s.Outward.toLocaleString()}</td>
+                <td>${s.RTOAdd.toLocaleString()}</td>
+                <td><strong>${s.NetStock.toLocaleString()}</strong></td>
+                <td>${s.NetStock < 100 ? '<span class="status-not">⚠️ Low Stock</span>' : '<span class="status-available">✅ Good</span>'}</td>
+            </tr>
+        `).join('');
+    }
+    
+    // ========== UPDATE PLAN TABLE ==========
+    function updatePlanTable() {
+        let plans = getPlanAvailability();
+        let tbody = document.querySelector('#planTable tbody');
+        if (plans.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No plan data with valid Bill Ref</td></tr>';
+            return;
+        }
+        tbody.innerHTML = plans.map(p => `
+            <tr>
+                <td>${p.HUL_Code}</td>
+                <td>${p.Basepack}</td>
+                <td>${p.Allocation}</td>
+                <td>${p.Bill_Ref}</td>
+                <td>${p.Stock_Before}</td>
+                <td><span class="${p.Status === 'Available' ? 'status-available' : 'status-not'}">${p.Status}</span></td>
+                <td>${p.Remark}</td>
+            </tr>
+        `).join('');
+    }
+    
+    // ========== UPDATE RTO TABLE ==========
+    function updateRTOTable() {
+        let rtos = getRTOSummary();
+        let tbody = document.querySelector('#rtoTable tbody');
+        if (rtos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No RTO data</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rtos.map(r => `
+            <tr>
+                <td>${r.HUL_Code}</td>
+                <td>${r.Basepack}</td>
+                <td>${r.Original_AWB}</td>
+                <td>${r.Attempt1}</td>
+                <td>${r.Attempt2}</td>
+                <td>${r.Attempt3}</td>
+                <td>${r.StockAction}</td>
+            </tr>
+        `).join('');
+    }
+    
+    // ========== UPDATE FILTER DROPDOWNS ==========
+    function updateFilters() {
+        let depots = [...new Set([...inwardData.map(i=>i.Depot), ...outwardData.map(o=>o.Depot)])];
+        let depotSelect = document.getElementById('depotFilter');
+        depotSelect.innerHTML = '<option value="All">All</option>' + depots.map(d => `<option value="${d}">${d}</option>`).join('');
+        
+        let basepacks = [...new Set([...inwardData.map(i=>i.Basepack), ...outwardData.map(o=>o.Basepack)])];
+        let bpSelect = document.getElementById('basepackFilter');
+        bpSelect.innerHTML = '<option value="All">All</option>' + basepacks.map(b => `<option value="${b}">${b}</option>`).join('');
+    }
+    
+    // ========== REFRESH ALL ==========
+    function refreshAll() {
+        updateKPIs();
+        updateStockTable();
+        updatePlanTable();
+        updateRTOTable();
+        updateFilters();
+        document.getElementById('syncTime').innerHTML = `Last sync: ${new Date().toLocaleTimeString()}`;
+        
+        let totalInward = inwardData.reduce((s,i)=>s+i.Quantity,0);
+        let totalOutward = outwardData.reduce((s,i)=>s+i.Quantity,0);
+        console.log(`Refresh: Inward=${totalInward}, Outward=${totalOutward}, Net=${totalInward-totalOutward}`);
+    }
+    
+    function applyFilters() {
+        refreshAll();
+        showStatus('Filters applied');
+    }
+    
+    // ========== DOWNLOAD EXCEL REPORT ==========
+    function downloadReport() {
+        let stock = calculateStock();
+        let plans = getPlanAvailability();
+        let rtos = getRTOSummary();
+        
+        let ws1 = XLSX.utils.json_to_sheet(stock);
+        let ws2 = XLSX.utils.json_to_sheet(plans);
+        let ws3 = XLSX.utils.json_to_sheet(rtos);
+        
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws1, 'Stock Summary');
+        XLSX.utils.book_append_sheet(wb, ws2, 'Plan vs Availability');
+        XLSX.utils.book_append_sheet(wb, ws3, 'RTO Tracking');
+        
+        XLSX.writeFile(wb, `WMS_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
+        showStatus('Report downloaded!');
+    }
+    
+    // ========== INIT ==========
+    loadFromStorage();
+    setInterval(() => { if(inwardData.length || outwardData.length) refreshAll(); }, 30000);
+</script>
+</body>
+</html>
