@@ -12,7 +12,6 @@
             font-family: 'Segoe UI', system-ui, sans-serif;
             color: #eef5ff;
             padding: 20px;
-            min-height: 100vh;
         }
         .container { max-width: 1600px; margin: 0 auto; }
         .header {
@@ -51,7 +50,6 @@
             padding: 15px 20px;
             background: rgba(5, 5, 20, 0.6);
             border-radius: 20px;
-            align-items: flex-end;
         }
         .filter-group select, .filter-group input {
             background: #0a0a1a;
@@ -76,11 +74,111 @@
             margin-bottom: 25px;
         }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1e2a44; font-size: 0.75rem; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #1e2a44; font-size: 0.75rem; }
         th { color: #2effbc; }
-        .status-good { background: #2effbc22; color: #2effbc; padding: 4px 12px; border-radius: 20px; display: inline-block; }
-        .status-warning { background: #ffcc4422; color: #ffcc66; padding: 4px 12px; border-radius: 20px; display: inline-block; }
-        .status-expired { background: #ff444422; color: #ff6666; padding: 4px 12px; border-radius: 20px; display: inline-block; }
         .footer { text-align: center; margin-top: 30px; font-size: 0.7rem; color: #4a617c; }
     </style>
-</
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>INWARD + OUTWARD + RTO | Live Data</p></div>
+        <div class="badge"><span class="live-dot"></span> LIVE <span id="syncTime"></span></div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><h4>📥 Total Inward</h4><div class="value" id="totalInward">0</div></div>
+        <div class="stat-card"><h4>📤 Total Outward</h4><div class="value" id="totalOutward">0</div></div>
+        <div class="stat-card"><h4>🔄 Total RTO</h4><div class="value" id="totalRTO">0</div></div>
+        <div class="stat-card"><h4>📦 Net Stock</h4><div class="value" id="netStock">0</div></div>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-group"><label>Depot</label><select id="depotFilter"><option value="All">All Depots</option></select></div>
+        <div class="filter-group"><label>Type</label><select id="typeFilter"><option value="All">All Types</option><option value="INWARD">INWARD</option><option value="OUTWARD">OUTWARD</option><option value="RTO">RTO</option></select></div>
+        <button class="btn-primary" onclick="loadData()">🔄 Refresh</button>
+        <button class="btn-primary" onclick="downloadReport()">📥 Download Excel</button>
+    </div>
+
+    <div class="table-container">
+        <h3>📊 DATA TABLE</h3>
+        <table id="dataTable">
+            <thead id="tableHeader"></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="footer">☁️ Data from Google Sheet | Last updated: <span id="lastUpdate">--</span></div>
+</div>
+
+<script>
+    const SHEETDB_URL = 'https://sheetdb.io/api/v1/y1k27fv4roasn';
+    let allData = [];
+    
+    async function loadData() {
+        document.getElementById('syncTime').innerHTML = '🔄 Syncing...';
+        try {
+            const response = await fetch(SHEETDB_URL);
+            allData = await response.json();
+            allData = allData.filter(row => row.Type && row.Type !== 'Type');
+            updateDashboard();
+            document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
+            document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
+        } catch (err) {
+            document.getElementById('syncTime').innerHTML = '❌ Error';
+        }
+    }
+    
+    function updateDashboard() {
+        const typeFilter = document.getElementById('typeFilter').value;
+        const depotFilter = document.getElementById('depotFilter').value;
+        
+        let filtered = allData;
+        if (typeFilter !== 'All') filtered = filtered.filter(d => d.Type === typeFilter);
+        if (depotFilter !== 'All') filtered = filtered.filter(d => d.Depot === depotFilter || d.Depot_User === depotFilter);
+        
+        const totalIn = allData.filter(d => d.Type === 'INWARD').reduce((s, d) => s + (Number(d['Challan Qty'] || d.Challan_Qty || d.Quantity || 0)), 0);
+        const totalOut = allData.filter(d => d.Type === 'OUTWARD').reduce((s, d) => s + (Number(d['Dispatches QTY'] || d.Dispatches_QTY || d.Quantity || 0)), 0);
+        const totalRTO = allData.filter(d => d.Type === 'RTO').length;
+        const netStock = totalIn - totalOut;
+        
+        document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
+        document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
+        document.getElementById('totalRTO').innerHTML = totalRTO;
+        document.getElementById('netStock').innerHTML = netStock.toLocaleString();
+        
+        // Dynamic table
+        if (filtered.length === 0) {
+            document.getElementById('tableHeader').innerHTML = '<tr><th>No Data</th></tr>';
+            document.getElementById('tableBody').innerHTML = '<tr><td>Upload data from depot panel</td></tr>';
+            return;
+        }
+        
+        const allKeys = [...new Set(filtered.flatMap(row => Object.keys(row)))];
+        const displayKeys = allKeys.filter(k => !['Upload_Date', 'Depot_User', 'Type'].includes(k));
+        
+        document.getElementById('tableHeader').innerHTML = `<tr>${displayKeys.map(k => `<th>${k}</th>`).join('')}</tr>`;
+        document.getElementById('tableBody').innerHTML = filtered.slice(0, 200).map(row => 
+            `<tr>${displayKeys.map(k => `<td>${row[k] || ''}</td>`).join('')}</tr>`
+        ).join('');
+        
+        const depotSelect = document.getElementById('depotFilter');
+        const depots = [...new Set(allData.map(d => d.Depot || d.Depot_User).filter(Boolean))];
+        depotSelect.innerHTML = '<option value="All">All Depots</option>' + depots.map(d => `<option value="${d}">${d}</option>`).join('');
+    }
+    
+    function downloadReport() {
+        const ws = XLSX.utils.json_to_sheet(allData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'All_Data');
+        XLSX.writeFile(wb, `WMS_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
+    }
+    
+    document.getElementById('typeFilter').addEventListener('change', () => updateDashboard());
+    document.getElementById('depotFilter').addEventListener('change', () => updateDashboard());
+    
+    loadData();
+    setInterval(loadData, 30000);
+</script>
+</body>
+</html>

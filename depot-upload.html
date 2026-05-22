@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAKMÉ WMS | DEPOT UPLOAD - FULL SYSTEM</title>
+    <title>LAKMÉ WMS | DEPOT UPLOAD</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,9 +12,8 @@
             font-family: 'Segoe UI', system-ui, sans-serif;
             color: #eef5ff;
             padding: 20px;
-            min-height: 100vh;
         }
-        .container { max-width: 1400px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; }
         .header {
             text-align: center;
             margin-bottom: 30px;
@@ -24,10 +23,8 @@
             border-bottom: 2px solid #2effbc;
         }
         .header h1 { background: linear-gradient(135deg, #fff, #2effbc); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .header p { font-size: 0.8rem; color: #8fa3c2; margin-top: 8px; }
         .login-box, .upload-box {
             background: rgba(15, 25, 45, 0.7);
-            backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 30px;
             margin-bottom: 20px;
@@ -41,7 +38,6 @@
             color: white;
             width: 100%;
             margin: 10px 0;
-            font-size: 1rem;
         }
         button {
             background: #2effbc22;
@@ -50,66 +46,39 @@
             padding: 12px 25px;
             border-radius: 30px;
             cursor: pointer;
-            font-weight: 600;
             width: 100%;
-            font-size: 1rem;
-            transition: 0.3s;
         }
-        button:hover { background: #2effbc; color: #050510; box-shadow: 0 0 20px #2effbc; }
-        .btn-template {
-            background: #3b82f622;
-            border-color: #3b82f6;
-            color: #3b82f6;
-            margin-bottom: 10px;
-        }
-        .btn-template:hover { background: #3b82f6; color: white; }
+        button:hover { background: #2effbc; color: #050510; }
+        .btn-template { background: #3b82f622; border-color: #3b82f6; color: #3b82f6; margin-bottom: 10px; }
         .depot-name { color: #2effbc; font-size: 1.2rem; margin-bottom: 20px; text-align: center; }
         .status { margin-top: 10px; padding: 10px; border-radius: 10px; text-align: center; }
         .success { background: #2effbc22; color: #2effbc; }
         .error { background: #ff444422; color: #ff6666; }
-        .warning { background: #ffcc4422; color: #ffcc66; }
         h3 { color: #2effbc; margin: 15px 0 10px 0; }
         hr { border-color: #2c3e5e; margin: 15px 0; }
-        .logout-btn {
-            background: #ff444422;
-            border-color: #ff6666;
-            color: #ff6666;
-            margin-top: 20px;
-        }
-        .logout-btn:hover { background: #ff4444; color: white; }
+        .logout-btn { background: #ff444422; border-color: #ff6666; color: #ff6666; margin-top: 20px; }
         .button-group { display: flex; gap: 10px; }
         .button-group button { flex: 1; }
-        .validation-rules {
-            font-size: 0.7rem;
-            color: #8fa3c2;
-            margin-top: 5px;
-            padding: 8px;
-            background: #0a0a1a;
-            border-radius: 10px;
-        }
-        .validation-rules ul { margin-left: 20px; margin-top: 5px; }
-        .validation-rules li { margin: 3px 0; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>◈ LAKMÉ WMS | DEPOT UPLOAD PANEL</h1>
-        <p>📥 INWARD (Auto Stock Calc) | 📤 OUTWARD (Auto TAT) | 🔄 RTO (Full Tracking)</p>
+        <h1>◈ LAKMÉ WMS | DEPOT UPLOAD</h1>
+        <p>INWARD | OUTWARD | RTO | Blank values allowed</p>
     </div>
 
     <div id="loginSection" class="login-box">
-        <h3 style="color:#2effbc; margin-bottom:20px; text-align:center;">🔐 Depot Login</h3>
         <select id="depotSelect">
-            <option value="">Select Your Depot</option>
-            <option value="Bangalore">🏭 Bangalore Depot</option>
-            <option value="Chennai">🏭 Chennai Depot</option>
-            <option value="Kolkata">🏭 Kolkata Depot</option>
-            <option value="Delhi">🏭 Delhi Depot</option>
-            <option value="Mumbai">🏭 Mumbai Depot</option>
+            <option value="">Select Depot</option>
+            <option value="Bangalore">Bangalore</option>
+            <option value="Chennai">Chennai</option>
+            <option value="Kolkata">Kolkata</option>
+            <option value="Delhi">Delhi</option>
+            <option value="Mumbai">Mumbai</option>
         </select>
-        <input type="password" id="passwordInput" placeholder="Enter Password">
-        <button onclick="login()">🔐 Login</button>
+        <input type="password" id="passwordInput" placeholder="Password">
+        <button onclick="login()">Login</button>
         <div id="loginStatus" class="status"></div>
     </div>
 
@@ -117,54 +86,28 @@
         <div class="upload-box">
             <div class="depot-name" id="loggedDepot"></div>
             
-            <!-- INWARD - 16 Columns with Auto Calculation -->
-            <h3>📥 INWARD (Stock In - Auto Stock Calc)</h3>
             <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('inward')">📎 Download Inward Template</button>
+                <button class="btn-template" onclick="downloadTemplate('inward')">📎 Inward Template</button>
+                <button class="btn-template" onclick="downloadTemplate('outward')">📎 Outward Template</button>
+                <button class="btn-template" onclick="downloadTemplate('rto')">📎 RTO Template</button>
             </div>
-            <div class="validation-rules">
-                <strong>📊 Auto Calculations:</strong><br>
-                • <strong>Net Stock</strong> = Challan Qty - Shortage - Damage + Excess<br>
-                • <strong>Stock Status</strong> = Good Stock / Expiry Soon / Stock Expiry (based on Expiry Date)<br>
-                • <strong>No of Days to Expire</strong> = Auto calculated from Expiry Date<br>
-                • <strong>Remarks</strong> = Good stock / Shortage / Damage / Excess (based on quantities)
-            </div>
+            
+            <h3>📥 INWARD</h3>
             <input type="file" id="inwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadInward()">📤 Upload Inward (Auto Calc)</button>
+            <button onclick="uploadInward()">Upload Inward</button>
             <div id="inwardStatus" class="status"></div>
 
-            <hr>
-
-            <!-- OUTWARD - 31 Columns with Auto TAT -->
-            <h3>📤 OUTWARD (Dispatch - Auto TAT)</h3>
-            <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('outward')">📎 Download Outward Template</button>
-            </div>
-            <div class="validation-rules">
-                <strong>📊 Auto TAT Formulas:</strong><br>
-                • Dispatches TAT = Shiprocket date - Order Picked up Date<br>
-                • Delivered TAT = Actual Order Delivered Date - Shiprocket date<br>
-                • Blank values allowed - will be saved as blank
-            </div>
+            <h3>📤 OUTWARD</h3>
             <input type="file" id="outwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadOutward()">📤 Upload Outward (Auto TAT)</button>
+            <button onclick="uploadOutward()">Upload Outward</button>
             <div id="outwardStatus" class="status"></div>
 
-            <hr>
-
-            <!-- RTO - 40 Columns -->
-            <h3>🔄 RTO (Returns - 40 Cols)</h3>
-            <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('rto')">📎 Download RTO Template</button>
-            </div>
-            <div class="validation-rules">
-                <strong>Columns:</strong> Outward 31 Cols + RTO2 (4 Cols) + RTO3 (4 Cols)
-            </div>
+            <h3>🔄 RTO</h3>
             <input type="file" id="rtoFile" accept=".csv,.xlsx">
-            <button onclick="uploadRTO()">📤 Upload RTO</button>
+            <button onclick="uploadRTO()">Upload RTO</button>
             <div id="rtoStatus" class="status"></div>
 
-            <button onclick="logout()" class="logout-btn">🚪 Logout</button>
+            <button onclick="logout()" class="logout-btn">Logout</button>
         </div>
     </div>
 </div>
@@ -185,120 +128,19 @@
     function showStatus(id, msg, type) {
         const el = document.getElementById(id);
         if (el) { el.innerHTML = msg; el.className = `status ${type}`; }
-        setTimeout(() => { if (el) el.innerHTML = ''; }, 4000);
+        setTimeout(() => { if (el) el.innerHTML = ''; }, 3000);
     }
     
-    function showToast(msg, color) {
-        let toast = document.createElement('div');
-        toast.style.cssText = `position:fixed; bottom:20px; right:20px; background:${color}; color:#050510; padding:10px 20px; border-radius:10px; z-index:9999; font-weight:bold;`;
-        toast.innerText = msg;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-    }
-    
-    // ========== DATE HELPER FUNCTIONS ==========
-    function parseDate(dateStr) {
-        if (!dateStr || dateStr.toString().trim() === '') return null;
-        const str = dateStr.toString().trim();
-        const parts = str.split('-');
-        if (parts.length === 3) {
-            return new Date(parts[2], parts[1]-1, parts[0]);
-        }
-        return new Date(str);
-    }
-    
-    function calculateDaysToExpire(expiryDateStr) {
-        if (!expiryDateStr || expiryDateStr.toString().trim() === '') return '';
-        const expiry = parseDate(expiryDateStr);
-        if (!expiry || isNaN(expiry)) return '';
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const diffTime = expiry - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
-    }
-    
-    function getStockStatus(expiryDateStr) {
-        if (!expiryDateStr || expiryDateStr.toString().trim() === '') return 'No Expiry Date';
-        const days = calculateDaysToExpire(expiryDateStr);
-        if (days === '') return 'No Expiry Date';
-        if (days < 0) return '❌ Stock Expiry';
-        if (days <= 30) return `⚠️ Expiry Soon (${days} days left)`;
-        return `✅ Good Stock (${days} days left)`;
-    }
-    
-    function getAutoRemarks(shortage, damage, excess) {
-        const s = parseFloat(shortage) || 0;
-        const d = parseFloat(damage) || 0;
-        const e = parseFloat(excess) || 0;
-        const remarks = [];
-        if (s > 0) remarks.push(`Shortage:${s}`);
-        if (d > 0) remarks.push(`Damage:${d}`);
-        if (e > 0) remarks.push(`Excess:${e}`);
-        if (remarks.length === 0) return 'Good stock';
-        return remarks.join(', ');
-    }
-    
-    function calculateNetStock(challanQty, shortage, damage, excess) {
-        const c = parseFloat(challanQty) || 0;
-        const s = parseFloat(shortage) || 0;
-        const d = parseFloat(damage) || 0;
-        const e = parseFloat(excess) || 0;
-        return c - s - d + e;
-    }
-    
-    function calculateDateDiff(date1Str, date2Str) {
-        if (!date1Str || !date2Str) return '';
-        if (date1Str.toString().trim() === '' || date2Str.toString().trim() === '') return '';
-        const d1 = parseDate(date1Str);
-        const d2 = parseDate(date2Str);
-        if (!d1 || !d2 || isNaN(d1) || isNaN(d2)) return '';
-        const diffTime = Math.abs(d2 - d1);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
-    }
-    
-    // ========== TEMPLATE DOWNLOADS ==========
     function downloadTemplate(type) {
-        let headers = [], sample = [];
-        
+        let headers = [];
         if (type === 'inward') {
-            headers = ['Depot', 'Basepack Code', 'SKU7', 'Product Name', 'PKM', 'Batch Code', 'Expiry Date', 'Challan Qty', 'Shortage Qty', 'Damage Qty', 'Excess Qty', 'EGIR', 'Remarks', 'Net Stock', 'Stock Status', 'No of Days to Expire'];
-            sample = [currentDepot || 'Bangalore', 'BP-001', 'SKU-001', 'Lakme Product', 'BATCH-001', 'BC-001', '31-12-2028', '100', '0', '0', '0', 'EGIR-001', 'Good stock', '', '', ''];
+            headers = ['Depot', 'Basepack Code', 'SKU7', 'Product Name', 'PKM', 'Batch Code', 'Expiry Date', 'Challan Qty', 'Shortage Qty', 'Damage Qty', 'Excess Qty', 'EGIR', 'Remarks'];
+        } else if (type === 'outward') {
+            headers = ['Channel', 'Tester', 'Category', 'HUL Code', 'Basepack', 'Basepack Description', 'Order Status', 'Date', 'Month', 'Actual Planned Quantity', 'Allocated Order Quantity', 'Bill Ref. No', 'Bill Quantity', 'Depot', 'HFS Code', 'Classification', 'Account', 'Complete Address', 'PBID', 'Name', 'Dispatches QTY', 'Delivery Challan number / Order ID', 'AWB Code', 'Courier Company Name', 'Order Picked up Date', 'Estimate Delivery Date', 'Actual Order Delivered Date', 'Shiprocket date', 'Remarks'];
+        } else {
+            headers = ['Channel', 'Tester', 'Category', 'HUL Code', 'Basepack', 'Basepack Description', 'Order Status', 'Date', 'Month', 'Actual Planned Quantity', 'Allocated Order Quantity', 'Bill Ref. No', 'Bill Quantity', 'Depot', 'HFS Code', 'Classification', 'Account', 'Complete Address', 'PBID', 'Name', 'Dispatches QTY', 'Delivery Challan number / Order ID', 'AWB Code', 'Courier Company Name', 'Order Picked up Date', 'Estimate Delivery Date', 'Actual Order Delivered Date', 'Shiprocket date', 'Remarks', 'RTO2 Delivery Challan number / Order ID', 'RTO2 AWB Code', 'RTO2 Order Status', 'RTO2 Courier Company Name', 'RTO3 Delivery Challan number / Order ID', 'RTO3 AWB Code', 'RTO3 Order Status', 'RTO3 Courier Company Name'];
         }
-        else if (type === 'outward') {
-            headers = [
-                'Channel', 'Tester', 'Category', 'HUL Code', 'Basepack', 'Basepack Description',
-                'Order Status', 'Date', 'Month', 'Actual Planned Quantity', 'Allocated Order Quantity',
-                'Bill Ref. No', 'Bill Quantity', 'Depot', 'HFS Code', 'Classification', 'Account',
-                'Complete Address', 'PBID', 'Name', 'Dispatches QTY', 'Delivery Challan number / Order ID',
-                'AWB Code', 'Courier Company Name', 'Order Picked up Date', 'Estimate Delivery Date',
-                'Actual Order Delivered Date', 'Shiprocket date', 'Remarks', 'Dispatches TAT', 'Delivered TAT'
-            ];
-            sample = Array(headers.length).fill('');
-            sample[0] = 'GT'; sample[3] = 'HUL-12345'; sample[4] = 'BP-001'; sample[13] = currentDepot || 'Bangalore';
-            sample[21] = 'DC-001'; sample[22] = 'AWB-12345'; sample[23] = 'Delhivery';
-            sample[24] = '20-05-2026'; sample[27] = '19-05-2026'; sample[26] = '24-05-2026';
-        }
-        else if (type === 'rto') {
-            headers = [
-                'Channel', 'Tester', 'Category', 'HUL Code', 'Basepack', 'Basepack Description',
-                'Order Status', 'Date', 'Month', 'Actual Planned Quantity', 'Allocated Order Quantity',
-                'Bill Ref. No', 'Bill Quantity', 'Depot', 'HFS Code', 'Classification', 'Account',
-                'Complete Address', 'PBID', 'Name', 'Dispatches QTY', 'Delivery Challan number / Order ID',
-                'AWB Code', 'Courier Company Name', 'Order Picked up Date', 'Estimate Delivery Date',
-                'Actual Order Delivered Date', 'Shiprocket date', 'Remarks', 'Dispatches TAT', 'Delivered TAT',
-                'RTO2 Delivery Challan number / Order ID', 'RTO2 AWB Code', 'RTO2 Order Status', 'RTO2 Courier Company Name',
-                'RTO3 Delivery Challan number / Order ID', 'RTO3 AWB Code', 'RTO3 Order Status', 'RTO3 Courier Company Name'
-            ];
-            sample = Array(headers.length).fill('');
-            sample[0] = 'GT'; sample[3] = 'HUL-12345'; sample[4] = 'BP-001'; sample[13] = currentDepot || 'Bangalore';
-            sample[21] = 'DC-001'; sample[22] = 'AWB-001';
-            sample[31] = 'RTO2-DC-001'; sample[32] = 'RTO2-AWB-001'; sample[33] = 'Failed';
-            sample[35] = 'RTO3-DC-001'; sample[36] = 'RTO3-AWB-001'; sample[37] = 'Failed';
-        }
-        
-        let csv = headers.join(',') + '\n' + sample.join(',');
+        let csv = headers.join(',') + '\n';
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -306,7 +148,6 @@
         a.download = `${type}_template.csv`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast(`📥 Downloaded ${type}_template.csv`, '#3b82f6');
     }
     
     function login() {
@@ -317,7 +158,7 @@
             currentDepot = depot;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('uploadSection').style.display = 'block';
-            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}<br>⚡ Auto Calculations: Stock Status | TAT | Net Stock`;
+            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}`;
             showStatus('loginStatus', 'Login success!', 'success');
         } else {
             showStatus('loginStatus', 'Invalid password', 'error');
@@ -328,9 +169,6 @@
         currentDepot = null;
         document.getElementById('loginSection').style.display = 'block';
         document.getElementById('uploadSection').style.display = 'none';
-        document.getElementById('inwardFile').value = '';
-        document.getElementById('outwardFile').value = '';
-        document.getElementById('rtoFile').value = '';
     }
     
     function parseFile(file, callback) {
@@ -344,200 +182,87 @@
         reader.readAsArrayBuffer(file);
     }
     
-    async function uploadToSheet(rows) {
+    async function uploadToSheet(rows, type) {
         try {
             const response = await fetch(SHEETDB_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: rows })
             });
-            return { success: response.ok };
+            return response.ok;
         } catch (err) {
-            return { success: false };
+            return false;
         }
     }
     
-    // ========== INWARD UPLOAD WITH AUTO CALCULATIONS ==========
     function uploadInward() {
         const file = document.getElementById('inwardFile').files[0];
         if (!file) { alert('Select file'); return; }
         
         parseFile(file, async (data) => {
-            let validRows = [];
-            for (let i = 0; i < data.length; i++) {
-                const row = data[i];
-                const challanQty = parseFloat(row['Challan Qty'] || row.Challan_Qty || row['Challan Quantity'] || 0) || 0;
-                const shortage = parseFloat(row['Shortage Qty'] || row.Shortage_Qty || 0) || 0;
-                const damage = parseFloat(row['Damage Qty'] || row.Damage_Qty || 0) || 0;
-                const excess = parseFloat(row['Excess Qty'] || row.Excess_Qty || 0) || 0;
-                const expiryDate = row['Expiry Date'] || row.Expiry_Date || '';
-                
-                const netStock = calculateNetStock(challanQty, shortage, damage, excess);
-                const stockStatus = getStockStatus(expiryDate);
-                const daysToExpire = calculateDaysToExpire(expiryDate);
-                const autoRemarks = getAutoRemarks(shortage, damage, excess);
-                
-                validRows.push({
-                    Type: 'INWARD',
-                    Depot: row.Depot || currentDepot,
-                    Basepack_Code: row['Basepack Code'] || row.Basepack_Code || '',
-                    SKU7: row.SKU7 || '',
-                    Product_Name: row['Product Name'] || row.Product_Name || '',
-                    PKM: row.PKM || '',
-                    Batch_Code: row['Batch Code'] || row.Batch_Code || '',
-                    Expiry_Date: expiryDate,
-                    Challan_Qty: challanQty,
-                    Shortage_Qty: shortage,
-                    Damage_Qty: damage,
-                    Excess_Qty: excess,
-                    EGIR: row.EGIR || '',
-                    Remarks: row.Remarks || autoRemarks,
-                    Net_Stock: netStock,
-                    Stock_Status: stockStatus,
-                    No_of_Days_to_Expire: daysToExpire,
-                    Upload_Date: new Date().toISOString(),
-                    Depot_User: currentDepot
-                });
-            }
+            const rows = data.map(row => ({
+                Type: 'INWARD',
+                ...row,
+                Depot: row.Depot || currentDepot,
+                Upload_Date: new Date().toISOString(),
+                Depot_User: currentDepot
+            }));
             
-            if (validRows.length === 0) { showStatus('inwardStatus', 'No valid rows', 'error'); return; }
-            showStatus('inwardStatus', 'Uploading...', 'warning');
-            const { success } = await uploadToSheet(validRows);
+            showStatus('inwardStatus', `Uploading ${rows.length} rows...`, 'warning');
+            const success = await uploadToSheet(rows, 'INWARD');
             if (success) {
-                showStatus('inwardStatus', `✅ ${validRows.length} inward rows uploaded! Net Stock calculated.`, 'success');
-                showToast(`📊 Stock calculated: Challan - Shortage - Damage + Excess`, '#2effbc');
-            } else { showStatus('inwardStatus', 'Upload failed', 'error'); }
+                showStatus('inwardStatus', `✅ ${rows.length} rows uploaded!`, 'success');
+            } else {
+                showStatus('inwardStatus', '❌ Upload failed', 'error');
+            }
             document.getElementById('inwardFile').value = '';
         });
     }
     
-    // ========== OUTWARD UPLOAD WITH AUTO TAT ==========
     function uploadOutward() {
         const file = document.getElementById('outwardFile').files[0];
         if (!file) { alert('Select file'); return; }
         
         parseFile(file, async (data) => {
-            let validRows = [];
-            for (let i = 0; i < data.length; i++) {
-                const row = data[i];
-                const orderPickedDate = row['Order Picked up Date'] || row.Order_Picked_up_Date || '';
-                const shiprocketDate = row['Shiprocket date'] || row.Shiprocket_date || '';
-                const actualDeliveredDate = row['Actual Order Delivered Date'] || row.Actual_Order_Delivered_Date || '';
-                
-                const dispatchesTAT = calculateDateDiff(orderPickedDate, shiprocketDate);
-                const deliveredTAT = calculateDateDiff(shiprocketDate, actualDeliveredDate);
-                
-                validRows.push({
-                    Type: 'OUTWARD',
-                    Channel: row.Channel || '',
-                    Tester: row.Tester || '',
-                    Category: row.Category || '',
-                    HUL_Code: row['HUL Code'] || row.HUL_Code || '',
-                    Basepack: row.Basepack || '',
-                    Basepack_Description: row['Basepack Description'] || row.Basepack_Description || '',
-                    Order_Status: row['Order Status'] || row.Order_Status || '',
-                    Date: row.Date || '',
-                    Month: row.Month || '',
-                    Actual_Planned_Quantity: row['Actual Planned Quantity'] || row.Actual_Planned_Quantity || '',
-                    Allocated_Order_Quantity: row['Allocated Order Quantity'] || row.Allocated_Order_Quantity || '',
-                    Bill_Ref_No: row['Bill Ref. No'] || row.Bill_Ref_No || '',
-                    Bill_Quantity: row['Bill Quantity'] || row.Bill_Quantity || '',
-                    Depot: row.Depot || currentDepot,
-                    HFS_Code: row['HFS Code'] || row.HFS_Code || '',
-                    Classification: row.Classification || '',
-                    Account: row.Account || '',
-                    Complete_Address: row['Complete Address'] || row.Complete_Address || '',
-                    PBID: row.PBID || '',
-                    Name: row.Name || '',
-                    Dispatches_QTY: row['Dispatches QTY'] || row.Dispatches_QTY || '',
-                    Delivery_Challan_No: row['Delivery Challan number / Order ID'] || row.Delivery_Challan_number_Order_ID || '',
-                    AWB_Code: row['AWB Code'] || row.AWB_Code || '',
-                    Courier_Company_Name: row['Courier Company Name'] || row.Courier_Company_Name || '',
-                    Order_Picked_up_Date: orderPickedDate,
-                    Estimate_Delivery_Date: row['Estimate Delivery Date'] || row.Estimate_Delivery_Date || '',
-                    Actual_Order_Delivered_Date: actualDeliveredDate,
-                    Shiprocket_date: shiprocketDate,
-                    Remarks: row.Remarks || '',
-                    Dispatches_TAT: dispatchesTAT,
-                    Delivered_TAT: deliveredTAT,
-                    Upload_Date: new Date().toISOString(),
-                    Depot_User: currentDepot
-                });
-            }
+            const rows = data.map(row => ({
+                Type: 'OUTWARD',
+                ...row,
+                Depot: row.Depot || currentDepot,
+                Upload_Date: new Date().toISOString(),
+                Depot_User: currentDepot
+            }));
             
-            if (validRows.length === 0) { showStatus('outwardStatus', 'No valid rows', 'error'); return; }
-            showStatus('outwardStatus', 'Uploading...', 'warning');
-            const { success } = await uploadToSheet(validRows);
+            showStatus('outwardStatus', `Uploading ${rows.length} rows...`, 'warning');
+            const success = await uploadToSheet(rows, 'OUTWARD');
             if (success) {
-                showStatus('outwardStatus', `✅ ${validRows.length} outward rows uploaded! TAT calculated.`, 'success');
-                showToast(`📊 TAT: Dispatches & Delivered calculated automatically`, '#2effbc');
-            } else { showStatus('outwardStatus', 'Upload failed', 'error'); }
+                showStatus('outwardStatus', `✅ ${rows.length} rows uploaded!`, 'success');
+            } else {
+                showStatus('outwardStatus', '❌ Upload failed', 'error');
+            }
             document.getElementById('outwardFile').value = '';
         });
     }
     
-    // ========== RTO UPLOAD ==========
     function uploadRTO() {
         const file = document.getElementById('rtoFile').files[0];
         if (!file) { alert('Select file'); return; }
         
         parseFile(file, async (data) => {
-            let validRows = [];
-            for (let i = 0; i < data.length; i++) {
-                const row = data[i];
-                validRows.push({
-                    Type: 'RTO',
-                    Channel: row.Channel || '',
-                    Tester: row.Tester || '',
-                    Category: row.Category || '',
-                    HUL_Code: row['HUL Code'] || row.HUL_Code || '',
-                    Basepack: row.Basepack || '',
-                    Basepack_Description: row['Basepack Description'] || row.Basepack_Description || '',
-                    Order_Status: row['Order Status'] || row.Order_Status || '',
-                    Date: row.Date || '',
-                    Month: row.Month || '',
-                    Actual_Planned_Quantity: row['Actual Planned Quantity'] || row.Actual_Planned_Quantity || '',
-                    Allocated_Order_Quantity: row['Allocated Order Quantity'] || row.Allocated_Order_Quantity || '',
-                    Bill_Ref_No: row['Bill Ref. No'] || row.Bill_Ref_No || '',
-                    Bill_Quantity: row['Bill Quantity'] || row.Bill_Quantity || '',
-                    Depot: row.Depot || currentDepot,
-                    HFS_Code: row['HFS Code'] || row.HFS_Code || '',
-                    Classification: row.Classification || '',
-                    Account: row.Account || '',
-                    Complete_Address: row['Complete Address'] || row.Complete_Address || '',
-                    PBID: row.PBID || '',
-                    Name: row.Name || '',
-                    Dispatches_QTY: row['Dispatches QTY'] || row.Dispatches_QTY || '',
-                    Delivery_Challan_No: row['Delivery Challan number / Order ID'] || row.Delivery_Challan_number_Order_ID || '',
-                    AWB_Code: row['AWB Code'] || row.AWB_Code || '',
-                    Courier_Company_Name: row['Courier Company Name'] || row.Courier_Company_Name || '',
-                    Order_Picked_up_Date: row['Order Picked up Date'] || '',
-                    Estimate_Delivery_Date: row['Estimate Delivery Date'] || '',
-                    Actual_Order_Delivered_Date: row['Actual Order Delivered Date'] || '',
-                    Shiprocket_date: row['Shiprocket date'] || '',
-                    Remarks: row.Remarks || '',
-                    Dispatches_TAT: row['Dispatches TAT'] || '',
-                    Delivered_TAT: row['Delivered TAT'] || '',
-                    RTO2_DC_No: row['RTO2 Delivery Challan number / Order ID'] || row.RTO2_Delivery_Challan_number_Order_ID || '',
-                    RTO2_AWB_Code: row['RTO2 AWB Code'] || row.RTO2_AWB_Code || '',
-                    RTO2_Order_Status: row['RTO2 Order Status'] || row.RTO2_Order_Status || '',
-                    RTO2_Courier: row['RTO2 Courier Company Name'] || row.RTO2_Courier_Company_Name || '',
-                    RTO3_DC_No: row['RTO3 Delivery Challan number / Order ID'] || row.RTO3_Delivery_Challan_number_Order_ID || '',
-                    RTO3_AWB_Code: row['RTO3 AWB Code'] || row.RTO3_AWB_Code || '',
-                    RTO3_Order_Status: row['RTO3 Order Status'] || row.RTO3_Order_Status || '',
-                    RTO3_Courier: row['RTO3 Courier Company Name'] || row.RTO3_Courier_Company_Name || '',
-                    Upload_Date: new Date().toISOString(),
-                    Depot_User: currentDepot
-                });
-            }
+            const rows = data.map(row => ({
+                Type: 'RTO',
+                ...row,
+                Depot: row.Depot || currentDepot,
+                Upload_Date: new Date().toISOString(),
+                Depot_User: currentDepot
+            }));
             
-            if (validRows.length === 0) { showStatus('rtoStatus', 'No valid rows', 'error'); return; }
-            showStatus('rtoStatus', 'Uploading...', 'warning');
-            const { success } = await uploadToSheet(validRows);
+            showStatus('rtoStatus', `Uploading ${rows.length} rows...`, 'warning');
+            const success = await uploadToSheet(rows, 'RTO');
             if (success) {
-                showStatus('rtoStatus', `✅ ${validRows.length} RTO rows uploaded!`, 'success');
-                showToast(`☁️ ${validRows.length} RTO rows synced!`, '#2effbc');
-            } else { showStatus('rtoStatus', 'Upload failed', 'error'); }
+                showStatus('rtoStatus', `✅ ${rows.length} rows uploaded!`, 'success');
+            } else {
+                showStatus('rtoStatus', '❌ Upload failed', 'error');
+            }
             document.getElementById('rtoFile').value = '';
         });
     }
