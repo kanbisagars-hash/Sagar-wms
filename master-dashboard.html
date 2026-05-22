@@ -114,9 +114,7 @@
 </div>
 
 <script>
-    // ========== NEW GOOGLE APPS SCRIPT URL ==========
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVJHrfWs2WpMxWMkWXVr6BIgS_UxaOrvvyCdN9hD6G0jjEre7A5ZK1MErmr-cme09N/exec';
-    
     const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
     let allInward = [], allOutward = [], allRTO = [];
     
@@ -127,14 +125,12 @@
             const result = await response.json();
             return result.data || [];
         } catch (err) {
-            console.error(`Error fetching ${depot} ${type}:`, err);
             return [];
         }
     }
     
     async function loadData() {
-        document.getElementById('syncTime').innerHTML = '🔄 Syncing from Cloud...';
-        document.getElementById('lastUpdate').innerHTML = 'Loading...';
+        document.getElementById('syncTime').innerHTML = '🔄 Syncing...';
         allInward = []; allOutward = []; allRTO = [];
         
         for (const depot of depots) {
@@ -199,12 +195,9 @@
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Depot_Stock_Summary');
         XLSX.writeFile(wb, `WMS_Cloud_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
-        alert('📥 Report downloaded!');
     }
     
-    // Load data on page load
     loadData();
-    // Auto refresh every 60 seconds
     setInterval(loadData, 60000);
 </script>
 </body>

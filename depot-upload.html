@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAKMÉ WMS | DEPOT UPLOAD PANEL</title>
+    <title>LAKMÉ WMS | DEPOT UPLOAD</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -124,7 +124,7 @@
             
             <h3>📥 INWARD (Stock In)</h3>
             <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('inward')">📎 Download Inward Template</button>
+                <button class="btn-template" onclick="downloadTemplate()">📎 Download Inward Template</button>
             </div>
             <div class="validation-rules">
                 <strong>⚠️ Validation Rules:</strong>
@@ -138,39 +138,13 @@
             <button onclick="uploadInward()">📤 Upload to Cloud</button>
             <div id="inwardStatus" class="status"></div>
 
-            <hr>
-
-            <h3>📤 OUTWARD (Dispatch - Full Tracking)</h3>
-            <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('outward')">📎 Download Outward Template</button>
-            </div>
-            <div class="validation-rules">
-                <strong>⚠️ 32 columns - All required</strong>
-            </div>
-            <input type="file" id="outwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadOutward()">📤 Upload to Cloud</button>
-            <div id="outwardStatus" class="status"></div>
-
-            <hr>
-
-            <h3>🔄 RTO (Returns - 3 Attempts)</h3>
-            <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('rto')">📎 Download RTO Template</button>
-            </div>
-            <div class="validation-rules">
-                <strong>⚠️ 38 columns - All required</strong>
-            </div>
-            <input type="file" id="rtoFile" accept=".csv,.xlsx">
-            <button onclick="uploadRTO()">📤 Upload to Cloud</button>
-            <div id="rtoStatus" class="status"></div>
-
             <button onclick="logout()" class="logout-btn">🚪 Logout</button>
         </div>
     </div>
 </div>
 
 <script>
-    // ========== NEW GOOGLE APPS SCRIPT URL ==========
+    // ========== GOOGLE APPS SCRIPT URL ==========
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVJHrfWs2WpMxWMkWXVr6BIgS_UxaOrvvyCdN9hD6G0jjEre7A5ZK1MErmr-cme09N/exec';
     
     // ========== DEPOT PASSWORDS ==========
@@ -218,33 +192,18 @@
         setTimeout(() => { if (el) { el.innerHTML = ''; el.className = 'status'; } }, 5000);
     }
     
-    function downloadTemplate(type) {
-        let headers = [], sampleData = [];
-        
-        if (type === 'inward') {
-            headers = ['Depot', 'Basepack', 'Quantity', 'PKM', 'Expiry', 'EGIR', 'Remarks'];
-            sampleData = [currentDepot || 'Bangalore', 'BP-001', '100', 'BATCH-001', '31-12-2028', 'INV-001', 'Good stock'];
-        } else if (type === 'outward') {
-            headers = ['Channel', 'Tester', 'Category', 'HUL Code', 'Basepack', 'Basepack Description', 'Order Status', 'Date', 'Month', 'Actual Planned Quantity', 'Allocated Order Quantity', 'Bill Ref. No', 'Bill Quantity', 'Depot', 'HFS Code', 'Classification', 'Account', 'Complete Address', 'PBID', 'Name', 'Dispatches QTY', 'Delivery Challan number / Order ID', 'AWB Code', 'Courier Company Name', 'Order Picked up Date', 'Estimate Delivery Date', 'Actual Order Delivered Date', 'Shiprocket date', 'Remarks', 'Dispatches TAT', 'Delivered TAT'];
-            sampleData = Array(headers.length).fill('Sample');
-            sampleData[3] = 'HUL-123';
-            sampleData[13] = currentDepot || 'Bangalore';
-        } else if (type === 'rto') {
-            headers = ['Channel', 'Tester', 'Category', 'HUL Code', 'Basepack', 'Basepack Description', 'Order Status', 'Date', 'Month', 'Actual Planned Quantity', 'Allocated Order Quantity', 'Bill Ref. No', 'Bill Quantity', 'Depot', 'HFS Code', 'Classification', 'Account', 'Complete Address', 'PBID', 'Name', 'Dispatches QTY', 'Delivery Challan number / Order ID', 'AWB Code', 'Courier Company Name', 'Order Picked up Date', 'Estimate Delivery Date', 'Actual Order Delivered Date', 'Shiprocket date', 'Remarks', 'Dispatches TAT', 'Delivered TAT', 'RTO2 Delivery Challan number / Order ID', 'RTO2 AWB Code', 'RTO2 Order Status', 'RTO2 Courier Company Name', 'RTO3 Delivery Challan number / Order ID', 'RTO3 AWB Code', 'RTO3 Order Status', 'RTO3 Courier Company Name'];
-            sampleData = Array(headers.length).fill('Sample');
-            sampleData[3] = 'HUL-123';
-            sampleData[13] = currentDepot || 'Bangalore';
-        }
-        
+    function downloadTemplate() {
+        const headers = ['Depot', 'Basepack', 'Quantity', 'PKM', 'Expiry', 'EGIR', 'Remarks'];
+        const sampleData = [currentDepot || 'Bangalore', 'BP-001', '100', 'BATCH-001', '31-12-2028', 'INV-001', 'Good stock'];
         let csvContent = headers.join(',') + '\n' + sampleData.join(',') + '\n\n# Instructions: Delete sample row, add your data. All columns required. Date format: DD-MM-YYYY';
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${type}_template.csv`;
+        a.download = 'inward_template.csv';
         a.click();
         URL.revokeObjectURL(url);
-        showToast(`📥 Downloaded ${type}_template.csv`, '#3b82f6');
+        showToast('📥 Downloaded inward_template.csv', '#3b82f6');
     }
     
     function login() {
@@ -269,8 +228,6 @@
         document.getElementById('passwordInput').value = '';
         document.getElementById('depotSelect').value = '';
         document.getElementById('inwardFile').value = '';
-        document.getElementById('outwardFile').value = '';
-        document.getElementById('rtoFile').value = '';
     }
     
     function generateUploadID(type) {
@@ -288,81 +245,77 @@
         reader.readAsArrayBuffer(file);
     }
     
-    async function uploadToSheet(type, rows, uploadID) {
-        try {
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ depot: currentDepot, type, uploadID, rows, timestamp: new Date().toISOString() })
-            });
-            const result = await response.json();
-            return result.success === true;
-        } catch (err) {
-            console.error('Upload error:', err);
-            return false;
-        }
-    }
-    
-    function uploadInward() {
+    async function uploadInward() {
         const file = document.getElementById('inwardFile').files[0];
-        if (!file) { alert('Select file'); return; }
+        if (!file) { alert('❌ Please select a file first'); return; }
+        
         parseFile(file, async (data) => {
             let validRows = [];
+            
             for (let i = 0; i < data.length; i++) {
                 const row = data[i];
-                if (isBlank(row.Depot) || isBlank(row.Basepack) || isBlank(row.PKM) || isBlank(row.Expiry) || isBlank(row.EGIR) || isBlank(row.Remarks)) continue;
+                
+                // Check all required fields
+                if (isBlank(row.Depot)) continue;
+                if (isBlank(row.Basepack)) continue;
+                
                 const qty = parseFloat(row.Quantity);
                 if (isNaN(qty) || qty <= 0) continue;
+                
+                if (isBlank(row.PKM)) continue;
+                if (isBlank(row.Expiry)) continue;
                 if (!isValidDate(row.Expiry)) continue;
+                if (isBlank(row.EGIR)) continue;
+                if (isBlank(row.Remarks)) continue;
                 if (!validRemarks.includes(row.Remarks.toString().trim())) continue;
-                validRows.push({ Depot: row.Depot, Basepack: row.Basepack, Quantity: qty, PKM: row.PKM, Expiry: row.Expiry, EGIR: row.EGIR, Remarks: row.Remarks });
+                
+                validRows.push({
+                    Depot: row.Depot.toString().trim(),
+                    Basepack: row.Basepack.toString().trim(),
+                    Quantity: qty,
+                    PKM: row.PKM.toString().trim(),
+                    Expiry: row.Expiry.toString().trim(),
+                    EGIR: row.EGIR.toString().trim(),
+                    Remarks: row.Remarks.toString().trim()
+                });
             }
-            if (validRows.length === 0) { showStatus('inwardStatus', '❌ No valid rows', 'error'); return; }
+            
+            if (validRows.length === 0) {
+                showStatus('inwardStatus', '❌ No valid rows found. Check all columns are filled.', 'error');
+                return;
+            }
+            
             const uploadID = generateUploadID('Inward');
-            const success = await uploadToSheet('Inward', validRows, uploadID);
-            if (success) {
-                showStatus('inwardStatus', `✅ ${validRows.length} rows uploaded to Cloud! ID: ${uploadID}`, 'success');
-                showToast(`☁️ ${validRows.length} rows synced to Google Sheet!`, '#2effbc');
-            } else {
-                showStatus('inwardStatus', '❌ Cloud upload failed. Check connection.', 'error');
+            
+            try {
+                showStatus('inwardStatus', '☁️ Uploading to cloud...', 'warning');
+                
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        depot: currentDepot,
+                        type: 'Inward',
+                        uploadID: uploadID,
+                        rows: validRows,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('inwardStatus', `✅ ${validRows.length} rows uploaded to Cloud! ID: ${uploadID}`, 'success');
+                    showToast(`☁️ ${validRows.length} rows synced to Google Sheet!`, '#2effbc');
+                } else {
+                    showStatus('inwardStatus', `❌ Cloud upload failed: ${result.error}`, 'error');
+                }
+            } catch (err) {
+                console.error('Upload error:', err);
+                showStatus('inwardStatus', `❌ Connection error: ${err.message}`, 'error');
             }
+            
             document.getElementById('inwardFile').value = '';
-        });
-    }
-    
-    function uploadOutward() {
-        const file = document.getElementById('outwardFile').files[0];
-        if (!file) { alert('Select file'); return; }
-        parseFile(file, async (data) => {
-            let validRows = data.filter(row => row['HUL Code'] || row.HUL_Code);
-            if (validRows.length === 0) { showStatus('outwardStatus', '❌ No valid rows', 'error'); return; }
-            const uploadID = generateUploadID('Outward');
-            const success = await uploadToSheet('Outward', validRows, uploadID);
-            if (success) {
-                showStatus('outwardStatus', `✅ ${validRows.length} rows uploaded to Cloud! ID: ${uploadID}`, 'success');
-                showToast(`☁️ ${validRows.length} outward rows synced!`, '#2effbc');
-            } else {
-                showStatus('outwardStatus', '❌ Cloud upload failed', 'error');
-            }
-            document.getElementById('outwardFile').value = '';
-        });
-    }
-    
-    function uploadRTO() {
-        const file = document.getElementById('rtoFile').files[0];
-        if (!file) { alert('Select file'); return; }
-        parseFile(file, async (data) => {
-            let validRows = data.filter(row => row['HUL Code'] || row.HUL_Code);
-            if (validRows.length === 0) { showStatus('rtoStatus', '❌ No valid rows', 'error'); return; }
-            const uploadID = generateUploadID('RTO');
-            const success = await uploadToSheet('RTO', validRows, uploadID);
-            if (success) {
-                showStatus('rtoStatus', `✅ ${validRows.length} rows uploaded to Cloud! ID: ${uploadID}`, 'success');
-                showToast(`☁️ ${validRows.length} RTO rows synced!`, '#2effbc');
-            } else {
-                showStatus('rtoStatus', '❌ Cloud upload failed', 'error');
-            }
-            document.getElementById('rtoFile').value = '';
         });
     }
 </script>
