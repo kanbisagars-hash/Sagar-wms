@@ -31,7 +31,7 @@
 <div class="container">
     <div class="header">
         <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>All 5 Depots | Inward + Outward + RTO</p></div>
-        <div class="badge"><span class="live-dot"></span> LOCAL STORAGE MODE <span id="syncTime"></span></div>
+        <div class="badge"><span class="live-dot"></span> CLOUD MODE <span id="syncTime"></span></div>
     </div>
 
     <div class="stats-grid">
@@ -53,24 +53,33 @@
         <table id="dataTable"><thead id="tableHeader"></thead><tbody id="tableBody"></tbody></table>
     </div>
 
-    <div class="footer">📌 Data is stored in each user's browser. Use 'Export/Import' feature to combine data. | Last updated: <span id="lastUpdate">--</span></div>
+    <div class="footer">☁️ Data from Google Sheet Cloud | Last updated: <span id="lastUpdate">--</span></div>
 </div>
 
 <script>
+    // ========== YOUR APPS SCRIPT URL ==========
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyu3G4KTY9D9iQp9aI4vKXLPYDIlUMVMSnzNgnrxPlZLyK0smYc6ofLlVAYRmcJLrIp/exec';
+    
     const DEPOTS = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
     const TYPES = ['INWARD', 'OUTWARD', 'RTO'];
     let allData = [];
     
-    function getStorageKey(depot, type) { return `wms_${depot}_${type}`; }
+    async function fetchData(depot, type) {
+        try {
+            let url = `${SCRIPT_URL}?depot=${depot}&type=${type}`;
+            let res = await fetch(url);
+            let json = await res.json();
+            return (json.data || []).map(row => ({ ...row, Depot_Name: depot, Type: type }));
+        } catch(e) { return []; }
+    }
     
-    function loadData() {
-        document.getElementById('syncTime').innerHTML = '🔄 Loading...';
+    async function loadData() {
+        document.getElementById('syncTime').innerHTML = '🔄 Syncing...';
         allData = [];
         for(let depot of DEPOTS) {
             for(let type of TYPES) {
-                let key = getStorageKey(depot, type);
-                let data = JSON.parse(localStorage.getItem(key) || '[]');
-                data.forEach(row => allData.push({ ...row, Depot_Name: depot, Type: type }));
+                let data = await fetchData(depot, type);
+                allData.push(...data);
             }
         }
         updateDashboard();
@@ -101,7 +110,7 @@
         
         if(filtered.length === 0) {
             document.getElementById('tableHeader').innerHTML = '<tr><th>No Data</th></tr>';
-            document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">No data found. Please ask depots to upload data.</td></tr>';
+            document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">No data found. Ask depots to upload.</td></tr>';
             return;
         }
         
@@ -109,7 +118,7 @@
         let displayKeys = allKeys.filter(k => !['UploadDate'].includes(k));
         document.getElementById('tableHeader').innerHTML = `<tr>${displayKeys.map(k => `<th>${k}</th>`).join('')}</tr>`;
         document.getElementById('tableBody').innerHTML = filtered.slice(0,500).map(row => 
-            `<tr>${displayKeys.map(k => `<td>${row[k] !== undefined ? row[k] : ''}</td>`).join('')}</tr>`
+            `<tr>${displayKeys.map(k => `<td>${row[k] !== undefined && row[k] !== null ? row[k] : ''}</td>`).join('')}</tr>`
         ).join('');
     }
     
@@ -125,7 +134,7 @@
     document.getElementById('depotFilter').addEventListener('change', () => updateDashboard());
     
     loadData();
-    setInterval(loadData, 30000);
+    setInterval(loadData, 60000);
 </script>
 </body>
 </html>

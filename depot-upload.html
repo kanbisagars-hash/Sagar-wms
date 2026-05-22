@@ -11,27 +11,31 @@
         .container{max-width:1200px;margin:0 auto;}
         .header{text-align:center;margin-bottom:30px;padding:20px;background:rgba(5,5,20,0.7);border-radius:20px;border-bottom:2px solid #2effbc;}
         .header h1{background:linear-gradient(135deg,#fff,#2effbc);-webkit-background-clip:text;background-clip:text;color:transparent;}
+        .header p{font-size:0.8rem;color:#8fa3c2;margin-top:8px;}
         .login-box,.upload-box{background:rgba(15,25,45,0.7);border-radius:20px;padding:30px;margin-bottom:20px;border:1px solid #2effbc33;}
-        input,select{background:#0a0a1a;border:1px solid #2c3e5e;padding:12px;border-radius:12px;color:white;width:100%;margin:10px 0;}
-        button{background:#2effbc22;border:1px solid #2effbc;color:#2effbc;padding:12px;border-radius:30px;cursor:pointer;width:100%;}
-        button:hover{background:#2effbc;color:#050510;}
+        input,select{background:#0a0a1a;border:1px solid #2c3e5e;padding:12px;border-radius:12px;color:white;width:100%;margin:10px 0;font-size:1rem;}
+        button{background:#2effbc22;border:1px solid #2effbc;color:#2effbc;padding:12px;border-radius:30px;cursor:pointer;width:100%;font-size:1rem;transition:0.3s;}
+        button:hover{background:#2effbc;color:#050510;box-shadow:0 0 15px #2effbc;}
         .btn-template{background:#3b82f622;border-color:#3b82f6;color:#3b82f6;margin-bottom:10px;}
+        .btn-template:hover{background:#3b82f6;color:white;}
         .depot-name{color:#2effbc;font-size:1.2rem;margin-bottom:20px;text-align:center;}
         .status{margin-top:10px;padding:10px;border-radius:10px;text-align:center;}
         .success{background:#2effbc22;color:#2effbc;}
         .error{background:#ff444422;color:#ff6666;}
+        .warning{background:#ffcc4422;color:#ffcc66;}
         h3{color:#2effbc;margin:15px 0 10px 0;}
         hr{border-color:#2c3e5e;margin:15px 0;}
         .button-group{display:flex;gap:10px;}
         .button-group button{flex:1;}
         .logout-btn{background:#ff444422;border-color:#ff6666;color:#ff6666;margin-top:20px;}
+        .logout-btn:hover{background:#ff4444;color:white;}
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1>◈ LAKMÉ WMS | DEPOT UPLOAD</h1>
-        <p>📥 Upload Inward | 📤 Upload Outward | 🔄 Upload RTO | Data saved in your browser</p>
+        <p>📥 Inward | 📤 Outward | 🔄 RTO | Cloud Storage</p>
     </div>
 
     <div id="loginSection" class="login-box">
@@ -44,7 +48,7 @@
             <option value="Mumbai">🏭 Mumbai Depot</option>
         </select>
         <input type="password" id="passwordInput" placeholder="Enter Password">
-        <button onclick="login()">Login</button>
+        <button onclick="login()">🔐 Login</button>
         <div id="loginStatus" class="status"></div>
     </div>
 
@@ -59,25 +63,28 @@
             
             <h3>📥 INWARD</h3>
             <input type="file" id="inwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadData('INWARD')">Upload Inward</button>
+            <button onclick="uploadData('INWARD')">📤 Upload Inward</button>
             <div id="inwardStatus" class="status"></div>
 
             <h3>📤 OUTWARD</h3>
             <input type="file" id="outwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadData('OUTWARD')">Upload Outward</button>
+            <button onclick="uploadData('OUTWARD')">📤 Upload Outward</button>
             <div id="outwardStatus" class="status"></div>
 
             <h3>🔄 RTO</h3>
             <input type="file" id="rtoFile" accept=".csv,.xlsx">
-            <button onclick="uploadData('RTO')">Upload RTO</button>
+            <button onclick="uploadData('RTO')">📤 Upload RTO</button>
             <div id="rtoStatus" class="status"></div>
 
-            <button onclick="logout()" class="logout-btn">Logout</button>
+            <button onclick="logout()" class="logout-btn">🚪 Logout</button>
         </div>
     </div>
 </div>
 
 <script>
+    // ========== YOUR APPS SCRIPT URL ==========
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyu3G4KTY9D9iQp9aI4vKXLPYDIlUMVMSnzNgnrxPlZLyK0smYc6ofLlVAYRmcJLrIp/exec';
+    
     const PASSWORDS = {
         "Bangalore": "bangalore123",
         "Chennai": "chennai456",
@@ -85,12 +92,13 @@
         "Delhi": "delhi101",
         "Mumbai": "mumbai202"
     };
+    
     let currentDepot = null;
     
     function showStatus(id, msg, type) {
         let el = document.getElementById(id);
         if(el) { el.innerHTML = msg; el.className = `status ${type}`; }
-        setTimeout(() => { if(el) el.innerHTML = ''; }, 3000);
+        setTimeout(() => { if(el) el.innerHTML = ''; }, 4000);
     }
     
     function downloadTemplate(type) {
@@ -117,9 +125,9 @@
             currentDepot = depot;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('uploadSection').style.display = 'block';
-            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}<br>📁 Data will be saved in your browser's local storage.`;
-            showStatus('loginStatus','Login success!','success');
-        } else { showStatus('loginStatus','Wrong password','error'); }
+            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}<br>📁 Cloud Sync Active`;
+            showStatus('loginStatus','✅ Login success!','success');
+        } else { showStatus('loginStatus','❌ Wrong password','error'); }
     }
     
     function logout() {
@@ -142,20 +150,30 @@
         reader.readAsArrayBuffer(file);
     }
     
-    function getStorageKey(depot, type) { return `wms_${depot}_${type}`; }
-    
-    function uploadData(type) {
+    async function uploadData(type) {
         let fileInput = type === 'INWARD' ? document.getElementById('inwardFile') : (type === 'OUTWARD' ? document.getElementById('outwardFile') : document.getElementById('rtoFile'));
         let statusId = type === 'INWARD' ? 'inwardStatus' : (type === 'OUTWARD' ? 'outwardStatus' : 'rtoStatus');
         let file = fileInput.files[0];
         if(!file) { alert('Select file'); return; }
         
-        parseFile(file, (data) => {
-            let key = getStorageKey(currentDepot, type);
-            let existing = JSON.parse(localStorage.getItem(key) || '[]');
-            let newData = [...existing, ...data.map(row => ({ ...row, UploadDate: new Date().toISOString() }))];
-            localStorage.setItem(key, JSON.stringify(newData));
-            showStatus(statusId, `✅ ${data.length} rows saved to ${currentDepot}_${type}!`, 'success');
+        parseFile(file, async (data) => {
+            showStatus(statusId, `☁️ Uploading ${data.length} rows...`, 'warning');
+            try {
+                let response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ depot: currentDepot, type: type, rows: data })
+                });
+                let result = await response.json();
+                if(result.success) {
+                    showStatus(statusId, `✅ ${data.length} rows saved to ${currentDepot}_${type}!`, 'success');
+                } else {
+                    showStatus(statusId, `❌ Upload failed: ${result.error}`, 'error');
+                }
+            } catch(err) {
+                console.error('Upload error:', err);
+                showStatus(statusId, `❌ Error: ${err.message}`, 'error');
+            }
             fileInput.value = '';
         });
     }
