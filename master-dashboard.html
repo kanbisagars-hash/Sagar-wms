@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAKMÉ WMS | MASTER DASHBOARD (CLOUD)</title>
+    <title>LAKMÉ WMS | MASTER DASHBOARD</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -90,7 +90,7 @@
         <div class="badge"><span class="live-dot"></span> CLOUD MODE <span id="syncTime"></span></div>
     </div>
 
-    <div class="stats-grid" id="statsGrid">
+    <div class="stats-grid">
         <div class="stat-card"><h4>📥 Total Inward</h4><div class="value" id="totalInward">0</div></div>
         <div class="stat-card"><h4>📤 Total Outward</h4><div class="value" id="totalOutward">0</div></div>
         <div class="stat-card"><h4>📦 Net Stock</h4><div class="value" id="netStock">0</div></div>
@@ -101,7 +101,7 @@
         <div class="filter-group"><label>Depot</label><select id="depotFilter"><option value="All">All Depots</option></select></div>
         <div class="filter-group"><label>From Date</label><input type="date" id="fromDate"></div>
         <div class="filter-group"><label>To Date</label><input type="date" id="toDate"></div>
-        <button class="btn-primary" onclick="loadDataFromCloud()">🔄 Refresh from Cloud</button>
+        <button class="btn-primary" onclick="loadData()">🔄 Refresh from Cloud</button>
         <button class="btn-primary" onclick="downloadReport()">📥 Download Excel</button>
     </div>
 
@@ -114,11 +114,13 @@
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyuFSDWXWzJ9gIuJPUJAiHTjEi-rXknxvWuRJFcdheUzt1MQS-OgRkCSKGBaFuueDHa/exec';
+    // ========== NEW GOOGLE APPS SCRIPT URL ==========
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVJHrfWs2WpMxWMkWXVr6BIgS_UxaOrvvyCdN9hD6G0jjEre7A5ZK1MErmr-cme09N/exec';
+    
     const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
     let allInward = [], allOutward = [], allRTO = [];
     
-    async function fetchSheetData(depot, type) {
+    async function fetchData(depot, type) {
         try {
             const url = `${SCRIPT_URL}?depot=${depot}&type=${type}`;
             const response = await fetch(url);
@@ -130,16 +132,17 @@
         }
     }
     
-    async function loadDataFromCloud() {
-        document.getElementById('syncTime').innerHTML = '🔄 Syncing...';
-        allInward = [];
-        allOutward = [];
-        allRTO = [];
+    async function loadData() {
+        document.getElementById('syncTime').innerHTML = '🔄 Syncing from Cloud...';
+        document.getElementById('lastUpdate').innerHTML = 'Loading...';
+        allInward = []; allOutward = []; allRTO = [];
         
         for (const depot of depots) {
-            const inward = await fetchSheetData(depot, 'Inward');
-            const outward = await fetchSheetData(depot, 'Outward');
-            const rto = await fetchSheetData(depot, 'RTO');
+            const [inward, outward, rto] = await Promise.all([
+                fetchData(depot, 'Inward'),
+                fetchData(depot, 'Outward'),
+                fetchData(depot, 'RTO')
+            ]);
             allInward.push(...inward);
             allOutward.push(...outward);
             allRTO.push(...rto);
@@ -150,49 +153,59 @@
         document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
     }
     
-    function calculateDepotWise() {
-        let result = [];
-        depots.forEach(depot => {
-            let totalIn = allInward.filter(i => i.Depot === depot).reduce((s, i) => s + (i.Quantity || 0), 0);
-            let totalOut = allOutward.filter(o => o.Depot === depot).reduce((s, o) => s + (o.Quantity || 0), 0);
-            let rtoAdd = allRTO.filter(r => r.Depot === depot && r.Attempt3_Status && r.Attempt3_Status.toLowerCase().includes('fail')).length;
-            let net = totalIn - totalOut + rtoAdd;
-            result.push({ depot, inward: totalIn, outward: totalOut, rtoAdd, netStock: net });
-        });
-        return result;
-    }
-    
     function updateDashboard() {
-        let depotData = calculateDepotWise();
-        let totalIn = depotData.reduce((s, d) => s + d.inward, 0);
-        let totalOut = depotData.reduce((s, d) => s + d.outward, 0);
-        let netStock = depotData.reduce((s, d) => s + d.netStock, 0);
-        let activeCount = depotData.filter(d => d.inward > 0 || d.outward > 0).length;
+        const depotData = depots.map(depot => {
+            const totalIn = allInward.filter(i => i.Depot === depot).reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
+            const totalOut = allOutward.filter(o => o.Depot === depot).reduce((s, o) => s + (Number(o.Quantity) || 0), 0);
+            const rtoAdd = allRTO.filter(r => r.Depot === depot && r.Attempt3_Status && r.Attempt3_Status.toLowerCase().includes('fail')).length;
+            const net = totalIn - totalOut + rtoAdd;
+            return { depot, inward: totalIn, outward: totalOut, rtoAdd, netStock: net };
+        });
+        
+        const totalIn = depotData.reduce((s, d) => s + d.inward, 0);
+        const totalOut = depotData.reduce((s, d) => s + d.outward, 0);
+        const netStock = depotData.reduce((s, d) => s + d.netStock, 0);
+        const activeCount = depotData.filter(d => d.inward > 0 || d.outward > 0).length;
         
         document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
         document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
         document.getElementById('netStock').innerHTML = netStock.toLocaleString();
         document.getElementById('activeDepots').innerHTML = activeCount;
         
-        let tbody = document.querySelector('#depotTable tbody');
+        const tbody = document.querySelector('#depotTable tbody');
         tbody.innerHTML = depotData.map(d => `
-            <tr><td><strong>${d.depot}</strong></td><td>${d.inward.toLocaleString()}</td><td>${d.outward.toLocaleString()}</td><td>${d.rtoAdd}</td><td><strong>${d.netStock.toLocaleString()}</strong></td><td>${d.netStock < 100 ? '<span class="status-not">⚠️ Low</span>' : '<span class="status-available">✅ Good</span>'}</td></tr>
+            <tr>
+                <td><strong>${d.depot}</strong></td>
+                <td>${d.inward.toLocaleString()}</td>
+                <td>${d.outward.toLocaleString()}</td>
+                <td>${d.rtoAdd}</td>
+                <td><strong>${d.netStock.toLocaleString()}</strong></td>
+                <td>${d.netStock < 100 ? '<span class="status-not">⚠️ Low Stock</span>' : '<span class="status-available">✅ Good</span>'}</td>
+            </tr>
         `).join('');
         
-        let depotSelect = document.getElementById('depotFilter');
-        depotSelect.innerHTML = '<option value="All">All Depots</option>' + depotData.map(d => `<option value="${d.depot}">${d.depot} (${d.netStock.toLocaleString()})</option>`).join('');
+        const depotSelect = document.getElementById('depotFilter');
+        depotSelect.innerHTML = '<option value="All">📊 All Depots</option>' + depotData.map(d => `<option value="${d.depot}">🏭 ${d.depot} (${d.netStock.toLocaleString()} units)</option>`).join('');
     }
     
     function downloadReport() {
-        let depotData = calculateDepotWise();
-        let ws = XLSX.utils.json_to_sheet(depotData);
-        let wb = XLSX.utils.book_new();
+        const depotData = depots.map(depot => {
+            const totalIn = allInward.filter(i => i.Depot === depot).reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
+            const totalOut = allOutward.filter(o => o.Depot === depot).reduce((s, o) => s + (Number(o.Quantity) || 0), 0);
+            const net = totalIn - totalOut;
+            return { Depot: depot, Inward: totalIn, Outward: totalOut, NetStock: net };
+        });
+        const ws = XLSX.utils.json_to_sheet(depotData);
+        const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Depot_Stock_Summary');
         XLSX.writeFile(wb, `WMS_Cloud_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
+        alert('📥 Report downloaded!');
     }
     
-    loadDataFromCloud();
-    setInterval(loadDataFromCloud, 60000);
+    // Load data on page load
+    loadData();
+    // Auto refresh every 60 seconds
+    setInterval(loadData, 60000);
 </script>
 </body>
 </html>
