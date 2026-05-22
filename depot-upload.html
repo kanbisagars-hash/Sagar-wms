@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAKMÉ WMS | DEPOT UPLOAD</title>
+    <title>LAKMÉ WMS | DEPOT UPLOAD - FULL VERSION</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -95,7 +95,7 @@
 <div class="container">
     <div class="header">
         <h1>◈ LAKMÉ WMS | DEPOT UPLOAD PANEL</h1>
-        <p>📥 INWARD | 📤 OUTWARD (40 Cols) | 🔄 RTO (44 Cols) | Cloud Storage</p>
+        <p>📥 INWARD (11 Cols) | 📤 OUTWARD (31 Cols + TAT Auto) | 🔄 RTO (40 Cols)</p>
     </div>
 
     <div id="loginSection" class="login-box">
@@ -117,14 +117,13 @@
         <div class="upload-box">
             <div class="depot-name" id="loggedDepot"></div>
             
-            <!-- INWARD -->
+            <!-- INWARD - 11 Columns -->
             <h3>📥 INWARD (Stock In)</h3>
             <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('inward')">📎 Download Inward Template</button>
+                <button class="btn-template" onclick="downloadTemplate('inward')">📎 Download Inward Template (11 Cols)</button>
             </div>
             <div class="validation-rules">
-                <strong>Columns:</strong> Depot, Basepack, Quantity, PKM, Expiry (DD-MM-YYYY), EGIR, Remarks<br>
-                <strong>Remarks:</strong> Good stock | Excess | Shortage | Damage
+                <strong>Columns:</strong> Depot, Basepack Code, SKU7, Product Name, Stock Status, PKM, Batch Code, Expiry Month, Expiry Date, No of Days to Expire, EGIR, Remarks
             </div>
             <input type="file" id="inwardFile" accept=".csv,.xlsx">
             <button onclick="uploadInward()">📤 Upload Inward</button>
@@ -132,13 +131,16 @@
 
             <hr>
 
-            <!-- OUTWARD - 40 COLUMNS -->
-            <h3>📤 OUTWARD (Dispatch - 40 Columns)</h3>
+            <!-- OUTWARD - 31 Columns + TAT Auto -->
+            <h3>📤 OUTWARD (Dispatch - 31 Cols)</h3>
             <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('outward')">📎 Download Outward Template (40 Cols)</button>
+                <button class="btn-template" onclick="downloadTemplate('outward')">📎 Download Outward Template (31 Cols)</button>
             </div>
             <div class="validation-rules">
-                <strong>40 Columns:</strong> Channel, Tester, Category, HUL Code, Basepack, Basepack Description, Order Status, Date, Month, Actual Planned Quantity, Allocated Order Quantity, Bill Ref. No, Bill Quantity, Depot, HFS Code, Classification, Account, Complete Address, PBID, Name, Dispatches QTY, Delivery Challan number / Order ID, AWB Code, Courier Company Name, Order Picked up Date, Estimate Delivery Date, Actual Order Delivered Date, Shiprocket date, Remarks, Dispatches TAT, Delivered TAT, RTO2 DC No, RTO2 AWB, RTO2 Status, RTO2 Courier, RTO3 DC No, RTO3 AWB, RTO3 Status, RTO3 Courier
+                <strong>Auto TAT Formulas:</strong><br>
+                • Dispatches TAT = Shiprocket date - Order Picked up Date (in days)<br>
+                • Delivered TAT = Actual Order Delivered Date - Shiprocket date (in days)<br>
+                • Blank values allowed - will be saved as blank
             </div>
             <input type="file" id="outwardFile" accept=".csv,.xlsx">
             <button onclick="uploadOutward()">📤 Upload Outward</button>
@@ -146,13 +148,13 @@
 
             <hr>
 
-            <!-- RTO - 44 COLUMNS -->
-            <h3>🔄 RTO (Returns - 44 Columns)</h3>
+            <!-- RTO - 40 Columns -->
+            <h3>🔄 RTO (Returns - 40 Cols)</h3>
             <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate('rto')">📎 Download RTO Template (44 Cols)</button>
+                <button class="btn-template" onclick="downloadTemplate('rto')">📎 Download RTO Template (40 Cols)</button>
             </div>
             <div class="validation-rules">
-                <strong>44 Columns:</strong> Same as Outward + RTO2 + RTO3 full tracking
+                <strong>Columns:</strong> Outward 31 Cols + RTO2 (4 Cols) + RTO3 (4 Cols)
             </div>
             <input type="file" id="rtoFile" accept=".csv,.xlsx">
             <button onclick="uploadRTO()">📤 Upload RTO</button>
@@ -174,20 +176,7 @@
         "Mumbai": "mumbai202"
     };
     
-    const validRemarks = ["Good stock", "Excess", "Shortage", "Damage"];
     let currentDepot = null;
-    
-    function isValidDate(dateStr) {
-        if (!dateStr) return false;
-        const parts = dateStr.split('-');
-        if (parts.length !== 3) return false;
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10);
-        const year = parseInt(parts[2], 10);
-        return !(isNaN(day) || isNaN(month) || isNaN(year) || day < 1 || day > 31 || month < 1 || month > 12 || year < 2000 || year > 2100);
-    }
-    
-    function isBlank(val) { return !val || val.toString().trim() === ''; }
     
     function showStatus(id, msg, type) {
         const el = document.getElementById(id);
@@ -203,13 +192,36 @@
         setTimeout(() => toast.remove(), 3000);
     }
     
+    // Date calculation helper (returns days difference or blank)
+    function calculateDateDiff(date1Str, date2Str) {
+        if (!date1Str || !date2Str) return '';
+        if (date1Str.toString().trim() === '' || date2Str.toString().trim() === '') return '';
+        
+        const parseDate = (dateStr) => {
+            const parts = dateStr.toString().split('-');
+            if (parts.length === 3) {
+                return new Date(parts[2], parts[1]-1, parts[0]);
+            }
+            return new Date(dateStr);
+        };
+        
+        try {
+            const d1 = parseDate(date1Str);
+            const d2 = parseDate(date2Str);
+            if (isNaN(d1) || isNaN(d2)) return '';
+            const diffTime = Math.abs(d2 - d1);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        } catch(e) { return ''; }
+    }
+    
     function downloadTemplate(type) {
         let headers = [], sample = [];
         
         if (type === 'inward') {
-            headers = ['Depot', 'Basepack', 'Quantity', 'PKM', 'Expiry', 'EGIR', 'Remarks'];
-            sample = [currentDepot || 'Bangalore', 'BP-001', '100', 'BATCH-001', '31-12-2028', 'INV-001', 'Good stock'];
-        } 
+            headers = ['Depot', 'Basepack Code', 'SKU7', 'Product Name', 'Stock Status', 'PKM', 'Batch Code', 'Expiry Month', 'Expiry Date', 'No of Days to Expire', 'EGIR', 'Remarks'];
+            sample = [currentDepot || 'Bangalore', 'BP-001', 'SKU-001', 'Lakme Product', 'In Stock', 'BATCH-001', 'BC-001', 'Dec-2028', '31-12-2028', '500', 'EGIR-001', 'Good stock'];
+        }
         else if (type === 'outward') {
             headers = [
                 'Channel', 'Tester', 'Category', 'HUL Code', 'Basepack', 'Basepack Description',
@@ -217,25 +229,40 @@
                 'Bill Ref. No', 'Bill Quantity', 'Depot', 'HFS Code', 'Classification', 'Account',
                 'Complete Address', 'PBID', 'Name', 'Dispatches QTY', 'Delivery Challan number / Order ID',
                 'AWB Code', 'Courier Company Name', 'Order Picked up Date', 'Estimate Delivery Date',
-                'Actual Order Delivered Date', 'Shiprocket date', 'Remarks', 'Dispatches TAT', 'Delivered TAT',
-                'RTO2 Delivery Challan number / Order ID', 'RTO2 AWB Code', 'RTO2 Order Status', 'RTO2 Courier Company Name',
-                'RTO3 Delivery Challan number / Order ID', 'RTO3 AWB Code', 'RTO3 Order Status', 'RTO3 Courier Company Name'
+                'Actual Order Delivered Date', 'Shiprocket date', 'Remarks', 'Dispatches TAT', 'Delivered TAT'
             ];
-            sample = Array(headers.length).fill('Sample');
+            sample = Array(headers.length).fill('');
+            sample[0] = 'GT';
+            sample[1] = 'BAU';
+            sample[2] = 'Lakme';
             sample[3] = 'HUL-12345';
             sample[4] = 'BP-001';
+            sample[5] = '12pk Box';
+            sample[6] = 'Delivered';
+            sample[7] = '22-05-2026';
+            sample[8] = 'May-26';
+            sample[9] = '100';
+            sample[10] = '80';
+            sample[11] = 'BILL-001';
+            sample[12] = '80';
             sample[13] = currentDepot || 'Bangalore';
-            sample[20] = '100';
+            sample[14] = 'HFS-001';
+            sample[15] = 'Platinum';
+            sample[16] = 'Reliance';
+            sample[17] = '123 Street';
+            sample[18] = 'PBID-001';
+            sample[19] = 'Product Name';
+            sample[20] = '75';
             sample[21] = 'DC-001';
-            sample[22] = 'AWB-001';
+            sample[22] = 'AWB-12345';
             sample[23] = 'Delhivery';
             sample[24] = '20-05-2026';
             sample[25] = '25-05-2026';
             sample[26] = '24-05-2026';
             sample[27] = '19-05-2026';
             sample[28] = 'Good';
-            sample[29] = '2';
-            sample[30] = '4';
+            sample[29] = '';  // Auto calculated
+            sample[30] = '';  // Auto calculated
         }
         else if (type === 'rto') {
             headers = [
@@ -248,13 +275,13 @@
                 'RTO2 Delivery Challan number / Order ID', 'RTO2 AWB Code', 'RTO2 Order Status', 'RTO2 Courier Company Name',
                 'RTO3 Delivery Challan number / Order ID', 'RTO3 AWB Code', 'RTO3 Order Status', 'RTO3 Courier Company Name'
             ];
-            sample = Array(headers.length).fill('Sample');
+            sample = Array(headers.length).fill('');
+            sample[0] = 'GT';
             sample[3] = 'HUL-12345';
             sample[4] = 'BP-001';
             sample[13] = currentDepot || 'Bangalore';
             sample[21] = 'DC-001';
             sample[22] = 'AWB-001';
-            sample[23] = 'Delhivery';
             sample[31] = 'RTO2-DC-001';
             sample[32] = 'RTO2-AWB-001';
             sample[33] = 'Failed';
@@ -284,7 +311,7 @@
             currentDepot = depot;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('uploadSection').style.display = 'block';
-            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}<br>☁️ Cloud Sync Active`;
+            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}<br>☁️ Cloud Sync Active | Blank values allowed`;
             showStatus('loginStatus', 'Login success!', 'success');
         } else {
             showStatus('loginStatus', 'Invalid password', 'error');
@@ -320,7 +347,7 @@
             });
             return { success: response.ok };
         } catch (err) {
-            return { success: false, error: err.message };
+            return { success: false };
         }
     }
     
@@ -333,22 +360,20 @@
             let validRows = [];
             for (let i = 0; i < data.length; i++) {
                 const row = data[i];
-                if (isBlank(row.Depot) || isBlank(row.Basepack)) continue;
-                const qty = parseFloat(row.Quantity);
-                if (isNaN(qty) || qty <= 0) continue;
-                if (isBlank(row.PKM) || isBlank(row.Expiry) || !isValidDate(row.Expiry)) continue;
-                if (isBlank(row.EGIR) || isBlank(row.Remarks)) continue;
-                if (!validRemarks.includes(row.Remarks.toString().trim())) continue;
-                
                 validRows.push({
                     Type: 'INWARD',
-                    Depot: row.Depot,
-                    Basepack: row.Basepack,
-                    Quantity: qty,
-                    PKM: row.PKM,
-                    Expiry: row.Expiry,
-                    EGIR: row.EGIR,
-                    Remarks: row.Remarks,
+                    Depot: row['Depot'] || row.Depot || '',
+                    Basepack_Code: row['Basepack Code'] || row.Basepack_Code || '',
+                    SKU7: row.SKU7 || '',
+                    Product_Name: row['Product Name'] || row.Product_Name || '',
+                    Stock_Status: row['Stock Status'] || row.Stock_Status || '',
+                    PKM: row.PKM || '',
+                    Batch_Code: row['Batch Code'] || row.Batch_Code || '',
+                    Expiry_Month: row['Expiry Month'] || row.Expiry_Month || '',
+                    Expiry_Date: row['Expiry Date'] || row.Expiry_Date || '',
+                    No_of_Days_to_Expire: row['No of Days to Expire'] || row.No_of_Days_to_Expire || '',
+                    EGIR: row.EGIR || '',
+                    Remarks: row.Remarks || '',
                     Upload_Date: new Date().toISOString(),
                     Depot_User: currentDepot
                 });
@@ -365,7 +390,7 @@
         });
     }
     
-    // OUTWARD UPLOAD - Full 40 columns
+    // OUTWARD UPLOAD - With TAT calculation
     function uploadOutward() {
         const file = document.getElementById('outwardFile').files[0];
         if (!file) { alert('Select file'); return; }
@@ -374,13 +399,50 @@
             let validRows = [];
             for (let i = 0; i < data.length; i++) {
                 const row = data[i];
-                if (isBlank(row['HUL Code']) && isBlank(row.HUL_Code)) continue;
+                
+                // Calculate TATs
+                const orderPickedDate = row['Order Picked up Date'] || row.Order_Picked_up_Date || '';
+                const shiprocketDate = row['Shiprocket date'] || row.Shiprocket_date || '';
+                const actualDeliveredDate = row['Actual Order Delivered Date'] || row.Actual_Order_Delivered_Date || '';
+                
+                const dispatchesTAT = calculateDateDiff(orderPickedDate, shiprocketDate);
+                const deliveredTAT = calculateDateDiff(shiprocketDate, actualDeliveredDate);
                 
                 validRows.push({
                     Type: 'OUTWARD',
-                    ...row,
-                    Depot_User: currentDepot,
-                    Upload_Date: new Date().toISOString()
+                    Channel: row.Channel || '',
+                    Tester: row.Tester || '',
+                    Category: row.Category || '',
+                    HUL_Code: row['HUL Code'] || row.HUL_Code || '',
+                    Basepack: row.Basepack || '',
+                    Basepack_Description: row['Basepack Description'] || row.Basepack_Description || '',
+                    Order_Status: row['Order Status'] || row.Order_Status || '',
+                    Date: row.Date || '',
+                    Month: row.Month || '',
+                    Actual_Planned_Quantity: row['Actual Planned Quantity'] || row.Actual_Planned_Quantity || '',
+                    Allocated_Order_Quantity: row['Allocated Order Quantity'] || row.Allocated_Order_Quantity || '',
+                    Bill_Ref_No: row['Bill Ref. No'] || row.Bill_Ref_No || '',
+                    Bill_Quantity: row['Bill Quantity'] || row.Bill_Quantity || '',
+                    Depot: row.Depot || currentDepot,
+                    HFS_Code: row['HFS Code'] || row.HFS_Code || '',
+                    Classification: row.Classification || '',
+                    Account: row.Account || '',
+                    Complete_Address: row['Complete Address'] || row.Complete_Address || '',
+                    PBID: row.PBID || '',
+                    Name: row.Name || '',
+                    Dispatches_QTY: row['Dispatches QTY'] || row.Dispatches_QTY || '',
+                    Delivery_Challan_No: row['Delivery Challan number / Order ID'] || row.Delivery_Challan_number_Order_ID || '',
+                    AWB_Code: row['AWB Code'] || row.AWB_Code || '',
+                    Courier_Company_Name: row['Courier Company Name'] || row.Courier_Company_Name || '',
+                    Order_Picked_up_Date: orderPickedDate,
+                    Estimate_Delivery_Date: row['Estimate Delivery Date'] || row.Estimate_Delivery_Date || '',
+                    Actual_Order_Delivered_Date: actualDeliveredDate,
+                    Shiprocket_date: shiprocketDate,
+                    Remarks: row.Remarks || '',
+                    Dispatches_TAT: dispatchesTAT,
+                    Delivered_TAT: deliveredTAT,
+                    Upload_Date: new Date().toISOString(),
+                    Depot_User: currentDepot
                 });
             }
             
@@ -389,13 +451,13 @@
             const { success } = await uploadToSheet(validRows);
             if (success) {
                 showStatus('outwardStatus', `✅ ${validRows.length} outward rows uploaded!`, 'success');
-                showToast(`☁️ ${validRows.length} outward rows synced!`, '#2effbc');
+                showToast(`☁️ ${validRows.length} outward rows synced! TAT calculated`, '#2effbc');
             } else { showStatus('outwardStatus', 'Upload failed', 'error'); }
             document.getElementById('outwardFile').value = '';
         });
     }
     
-    // RTO UPLOAD - Full columns
+    // RTO UPLOAD
     function uploadRTO() {
         const file = document.getElementById('rtoFile').files[0];
         if (!file) { alert('Select file'); return; }
@@ -404,13 +466,49 @@
             let validRows = [];
             for (let i = 0; i < data.length; i++) {
                 const row = data[i];
-                if (isBlank(row['HUL Code']) && isBlank(row.HUL_Code)) continue;
-                
                 validRows.push({
                     Type: 'RTO',
-                    ...row,
-                    Depot_User: currentDepot,
-                    Upload_Date: new Date().toISOString()
+                    Channel: row.Channel || '',
+                    Tester: row.Tester || '',
+                    Category: row.Category || '',
+                    HUL_Code: row['HUL Code'] || row.HUL_Code || '',
+                    Basepack: row.Basepack || '',
+                    Basepack_Description: row['Basepack Description'] || row.Basepack_Description || '',
+                    Order_Status: row['Order Status'] || row.Order_Status || '',
+                    Date: row.Date || '',
+                    Month: row.Month || '',
+                    Actual_Planned_Quantity: row['Actual Planned Quantity'] || row.Actual_Planned_Quantity || '',
+                    Allocated_Order_Quantity: row['Allocated Order Quantity'] || row.Allocated_Order_Quantity || '',
+                    Bill_Ref_No: row['Bill Ref. No'] || row.Bill_Ref_No || '',
+                    Bill_Quantity: row['Bill Quantity'] || row.Bill_Quantity || '',
+                    Depot: row.Depot || currentDepot,
+                    HFS_Code: row['HFS Code'] || row.HFS_Code || '',
+                    Classification: row.Classification || '',
+                    Account: row.Account || '',
+                    Complete_Address: row['Complete Address'] || row.Complete_Address || '',
+                    PBID: row.PBID || '',
+                    Name: row.Name || '',
+                    Dispatches_QTY: row['Dispatches QTY'] || row.Dispatches_QTY || '',
+                    Delivery_Challan_No: row['Delivery Challan number / Order ID'] || row.Delivery_Challan_number_Order_ID || '',
+                    AWB_Code: row['AWB Code'] || row.AWB_Code || '',
+                    Courier_Company_Name: row['Courier Company Name'] || row.Courier_Company_Name || '',
+                    Order_Picked_up_Date: row['Order Picked up Date'] || '',
+                    Estimate_Delivery_Date: row['Estimate Delivery Date'] || '',
+                    Actual_Order_Delivered_Date: row['Actual Order Delivered Date'] || '',
+                    Shiprocket_date: row['Shiprocket date'] || '',
+                    Remarks: row.Remarks || '',
+                    Dispatches_TAT: row['Dispatches TAT'] || '',
+                    Delivered_TAT: row['Delivered TAT'] || '',
+                    RTO2_DC_No: row['RTO2 Delivery Challan number / Order ID'] || row.RTO2_Delivery_Challan_number_Order_ID || '',
+                    RTO2_AWB_Code: row['RTO2 AWB Code'] || row.RTO2_AWB_Code || '',
+                    RTO2_Order_Status: row['RTO2 Order Status'] || row.RTO2_Order_Status || '',
+                    RTO2_Courier: row['RTO2 Courier Company Name'] || row.RTO2_Courier_Company_Name || '',
+                    RTO3_DC_No: row['RTO3 Delivery Challan number / Order ID'] || row.RTO3_Delivery_Challan_number_Order_ID || '',
+                    RTO3_AWB_Code: row['RTO3 AWB Code'] || row.RTO3_AWB_Code || '',
+                    RTO3_Order_Status: row['RTO3 Order Status'] || row.RTO3_Order_Status || '',
+                    RTO3_Courier: row['RTO3 Courier Company Name'] || row.RTO3_Courier_Company_Name || '',
+                    Upload_Date: new Date().toISOString(),
+                    Depot_User: currentDepot
                 });
             }
             
