@@ -61,6 +61,13 @@
             transition: 0.3s;
         }
         button:hover { background: #2effbc; color: #050510; box-shadow: 0 0 20px #2effbc; }
+        .btn-template {
+            background: #3b82f622;
+            border-color: #3b82f6;
+            color: #3b82f6;
+            margin-bottom: 10px;
+        }
+        .btn-template:hover { background: #3b82f6; color: white; }
         .depot-name { color: #2effbc; font-size: 1.2rem; margin-bottom: 20px; text-align: center; }
         .status { margin-top: 10px; padding: 10px; border-radius: 10px; text-align: center; }
         .success { background: #2effbc22; color: #2effbc; }
@@ -74,13 +81,15 @@
             margin-top: 20px;
         }
         .logout-btn:hover { background: #ff4444; color: white; }
+        .button-group { display: flex; gap: 10px; }
+        .button-group button { flex: 1; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1>◈ LAKMÉ WMS | DEPOT UPLOAD PANEL</h1>
-        <p>Upload Inward, Outward & RTO | Auto Tracking ID | Only Your Depot</p>
+        <p>📥 Download Template → Fill Data → Upload → Auto Tracking ID</p>
     </div>
 
     <!-- Login Section -->
@@ -104,24 +113,33 @@
         <div class="upload-box">
             <div class="depot-name" id="loggedDepot"></div>
             
+            <!-- INWARD -->
             <h3>📥 INWARD (Stock In)</h3>
-            <p style="font-size:0.7rem; color:#8fa3c2;">CSV Columns: Basepack, Quantity, Date, PKM, ExpiryDate, Remarks</p>
+            <div class="button-group">
+                <button class="btn-template" onclick="downloadTemplate('inward')">📎 Download Inward Template</button>
+            </div>
             <input type="file" id="inwardFile" accept=".csv,.xlsx">
             <button onclick="uploadInward()">📤 Upload Inward</button>
             <div id="inwardStatus" class="status"></div>
 
             <hr>
 
+            <!-- OUTWARD -->
             <h3>📤 OUTWARD (Dispatch)</h3>
-            <p style="font-size:0.7rem; color:#8fa3c2;">CSV Columns: HUL_Code, Basepack, Quantity, AWB_Code, Date</p>
+            <div class="button-group">
+                <button class="btn-template" onclick="downloadTemplate('outward')">📎 Download Outward Template</button>
+            </div>
             <input type="file" id="outwardFile" accept=".csv,.xlsx">
             <button onclick="uploadOutward()">📤 Upload Outward</button>
             <div id="outwardStatus" class="status"></div>
 
             <hr>
 
+            <!-- RTO -->
             <h3>🔄 RTO (Returns - 3 Attempts)</h3>
-            <p style="font-size:0.7rem; color:#8fa3c2;">CSV Columns: HUL_Code, Basepack, AWB_Code, Attempt1_Status, Attempt2_Status, Attempt3_Status, Date</p>
+            <div class="button-group">
+                <button class="btn-template" onclick="downloadTemplate('rto')">📎 Download RTO Template</button>
+            </div>
             <input type="file" id="rtoFile" accept=".csv,.xlsx">
             <button onclick="uploadRTO()">📤 Upload RTO</button>
             <div id="rtoStatus" class="status"></div>
@@ -142,6 +160,52 @@
     };
     
     let currentDepot = null;
+    
+    // ========== TEMPLATE DOWNLOAD FUNCTION ==========
+    function downloadTemplate(type) {
+        let headers = [];
+        let sampleData = [];
+        
+        if (type === 'inward') {
+            headers = ['Basepack', 'Quantity', 'Date', 'PKM', 'ExpiryDate', 'Remarks'];
+            sampleData = ['BP-001', '100', '2026-05-22', 'BATCH-001', '2028-12-31', 'Good stock'];
+        } else if (type === 'outward') {
+            headers = ['HUL_Code', 'Basepack', 'Quantity', 'AWB_Code', 'Date'];
+            sampleData = ['HUL-420554D', 'BP-001', '20', 'AWB-12345', '2026-05-22'];
+        } else if (type === 'rto') {
+            headers = ['HUL_Code', 'Basepack', 'AWB_Code', 'Attempt1_Status', 'Attempt2_Status', 'Attempt3_Status', 'Date'];
+            sampleData = ['HUL-420554D', 'BP-001', 'AWB-12345', 'Failed', 'Failed', 'Failed', '2026-05-22'];
+        }
+        
+        // Create CSV content
+        let csvContent = headers.join(',') + '\n';
+        csvContent += sampleData.join(',') + '\n';
+        csvContent += '\n'; // Empty row for user to fill
+        csvContent += '# Instructions: Delete sample row, add your data. Keep headers as is.\n';
+        csvContent += '# Date format: YYYY-MM-DD\n';
+        csvContent += '# Quantity should be number only\n';
+        
+        // Download file
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${type}_template.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast(`📥 Downloaded ${type}_template.csv`, '#3b82f6');
+    }
+    
+    function showToast(msg, color = '#2effbc') {
+        let toast = document.createElement('div');
+        toast.style.cssText = `position:fixed; bottom:20px; right:20px; background:${color}; color:#050510; padding:10px 20px; border-radius:10px; z-index:9999; font-weight:bold;`;
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
     
     // Generate Unique Upload ID
     function generateUploadID(type) {
@@ -165,7 +229,7 @@
             currentDepot = depot;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('uploadSection').style.display = 'block';
-            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot} Depot <span style="font-size:0.7rem;">| You can only upload for ${depot}</span>`;
+            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot} Depot<br><span style="font-size:0.7rem;">📥 Download template, fill data, then upload</span>`;
             showStatus('loginStatus', '✅ Login successful!', 'success');
         } else {
             showStatus('loginStatus', '❌ Invalid password. Contact admin.', 'error');
@@ -178,7 +242,6 @@
         document.getElementById('uploadSection').style.display = 'none';
         document.getElementById('passwordInput').value = '';
         document.getElementById('depotSelect').value = '';
-        // Clear file inputs
         document.getElementById('inwardFile').value = '';
         document.getElementById('outwardFile').value = '';
         document.getElementById('rtoFile').value = '';
@@ -189,10 +252,7 @@
         el.innerHTML = message;
         el.className = `status ${type}`;
         setTimeout(() => { 
-            if (el) {
-                el.innerHTML = ''; 
-                el.className = 'status'; 
-            }
+            if (el) { el.innerHTML = ''; el.className = 'status'; }
         }, 5000);
     }
     
@@ -212,7 +272,6 @@
         let key = `wms_${type}_${currentDepot}`;
         let existing = JSON.parse(localStorage.getItem(key) || '[]');
         
-        // Add uploadID and metadata to each row
         let dataWithID = data.map(row => ({
             ...row,
             Upload_ID: uploadID,
@@ -224,7 +283,6 @@
         let newData = [...existing, ...dataWithID];
         localStorage.setItem(key, JSON.stringify(newData));
         
-        // Save to master upload log for admin
         let masterLog = JSON.parse(localStorage.getItem('wms_master_upload_log') || '[]');
         masterLog.push({
             Upload_ID: uploadID,
