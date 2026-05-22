@@ -53,8 +53,21 @@
             border-radius: 20px;
             align-items: flex-end;
         }
-        .filter-group select { background: #0a0a1a; border: 1px solid #2c3e5e; padding: 8px 15px; border-radius: 25px; color: white; }
-        .btn-primary { background: #2effbc22; border: 1px solid #2effbc; color: #2effbc; padding: 8px 25px; border-radius: 25px; cursor: pointer; }
+        .filter-group select, .filter-group input {
+            background: #0a0a1a;
+            border: 1px solid #2c3e5e;
+            padding: 8px 15px;
+            border-radius: 25px;
+            color: white;
+        }
+        .btn-primary {
+            background: #2effbc22;
+            border: 1px solid #2effbc;
+            color: #2effbc;
+            padding: 8px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+        }
         .table-container {
             background: rgba(10, 15, 35, 0.7);
             border-radius: 20px;
@@ -65,135 +78,9 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1e2a44; font-size: 0.75rem; }
         th { color: #2effbc; }
-        .status-available { background: #2effbc22; color: #2effbc; padding: 4px 12px; border-radius: 20px; display: inline-block; }
-        .status-not { background: #ff444422; color: #ff6666; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        .status-good { background: #2effbc22; color: #2effbc; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        .status-warning { background: #ffcc4422; color: #ffcc66; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        .status-expired { background: #ff444422; color: #ff6666; padding: 4px 12px; border-radius: 20px; display: inline-block; }
         .footer { text-align: center; margin-top: 30px; font-size: 0.7rem; color: #4a617c; }
     </style>
-</head>
-<body>
-<div class="container">
-    <div class="header">
-        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>INWARD + OUTWARD (40 Cols) + RTO (44 Cols)</p></div>
-        <div class="badge"><span class="live-dot"></span> CLOUD MODE <span id="syncTime"></span></div>
-    </div>
-
-    <div class="stats-grid">
-        <div class="stat-card"><h4>📥 Total Inward</h4><div class="value" id="totalInward">0</div></div>
-        <div class="stat-card"><h4>📤 Total Outward</h4><div class="value" id="totalOutward">0</div></div>
-        <div class="stat-card"><h4>🔄 Total RTO</h4><div class="value" id="totalRTO">0</div></div>
-        <div class="stat-card"><h4>📦 Net Stock</h4><div class="value" id="netStock">0</div></div>
-        <div class="stat-card"><h4>🏭 Active Depots</h4><div class="value" id="activeDepots">0</div></div>
-    </div>
-
-    <div class="filter-bar">
-        <div class="filter-group"><label>Depot</label><select id="depotFilter"><option value="All">All Depots</option></select></div>
-        <div class="filter-group"><label>Type</label><select id="typeFilter"><option value="All">All Types</option><option value="INWARD">INWARD</option><option value="OUTWARD">OUTWARD</option><option value="RTO">RTO</option></select></div>
-        <button class="btn-primary" onclick="loadData()">🔄 Refresh</button>
-        <button class="btn-primary" onclick="downloadReport()">📥 Download Excel</button>
-    </div>
-
-    <div class="table-container">
-        <h3>📊 DEPOT-WISE SUMMARY</h3>
-        <table id="depotTable"><thead><tr><th>Depot</th><th>Inward</th><th>Outward</th><th>RTO</th><th>Net Stock</th><th>Status</th></tr></thead><tbody></tbody></table>
-    </div>
-
-    <div class="table-container">
-        <h3>📋 ALL TRANSACTIONS</h3>
-        <table id="transTable">
-            <thead><tr><th>Date</th><th>Type</th><th>Depot</th><th>HUL Code</th><th>Basepack</th><th>Quantity</th><th>AWB/DC</th><th>Status</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </div>
-
-    <div class="footer">☁️ Data from Google Sheet via SheetDB | Last updated: <span id="lastUpdate">--</span></div>
-</div>
-
-<script>
-    const SHEETDB_URL = 'https://sheetdb.io/api/v1/y1k27fv4roasn';
-    const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
-    let allData = [];
-    
-    async function loadData() {
-        document.getElementById('syncTime').innerHTML = '🔄 Syncing...';
-        try {
-            const response = await fetch(SHEETDB_URL);
-            const data = await response.json();
-            allData = data.filter(row => row.Type && row.Type !== 'Type');
-            updateDashboard();
-            document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
-            document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
-        } catch (err) { document.getElementById('syncTime').innerHTML = '❌ Error'; }
-    }
-    
-    function updateDashboard() {
-        const typeFilter = document.getElementById('typeFilter').value;
-        let filtered = allData;
-        if (typeFilter !== 'All') filtered = allData.filter(d => d.Type === typeFilter);
-        
-        const depotData = depots.map(depot => {
-            const inward = allData.filter(i => (i.Depot === depot || i.Depot_User === depot) && i.Type === 'INWARD').reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
-            const outward = allData.filter(i => (i.Depot === depot || i.Depot_User === depot) && i.Type === 'OUTWARD').reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
-            const rtoCount = allData.filter(i => (i.Depot === depot || i.Depot_User === depot) && i.Type === 'RTO').length;
-            const net = inward - outward;
-            return { depot, inward, outward, rto: rtoCount, netStock: net };
-        });
-        
-        const totalIn = depotData.reduce((s, d) => s + d.inward, 0);
-        const totalOut = depotData.reduce((s, d) => s + d.outward, 0);
-        const totalRTO = depotData.reduce((s, d) => s + d.rto, 0);
-        const netStock = depotData.reduce((s, d) => s + d.netStock, 0);
-        const activeCount = depotData.filter(d => d.inward > 0 || d.outward > 0).length;
-        
-        document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
-        document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
-        document.getElementById('totalRTO').innerHTML = totalRTO;
-        document.getElementById('netStock').innerHTML = netStock.toLocaleString();
-        document.getElementById('activeDepots').innerHTML = activeCount;
-        
-        const tbody = document.querySelector('#depotTable tbody');
-        tbody.innerHTML = depotData.map(d => `<tr>
-            <td><strong>${d.depot}</strong></td>
-            <td>${d.inward.toLocaleString()}</td>
-            <td>${d.outward.toLocaleString()}</td>
-            <td>${d.rto}</td>
-            <td><strong>${d.netStock.toLocaleString()}</strong></td>
-            <td>${d.netStock < 100 ? '<span class="status-not">⚠️ Low</span>' : '<span class="status-available">✅ Good</span>'}</td>
-        </tr>`).join('');
-        
-        const depotSelect = document.getElementById('depotFilter');
-        depotSelect.innerHTML = '<option value="All">All Depots</option>' + depotData.map(d => `<option value="${d.depot}">${d.depot} (${d.netStock.toLocaleString()})</option>`).join('');
-        
-        // Transactions table
-        const transTbody = document.querySelector('#transTable tbody');
-        const depotFilter = document.getElementById('depotFilter').value;
-        let transFiltered = filtered;
-        if (depotFilter !== 'All') transFiltered = filtered.filter(t => t.Depot === depotFilter || t.Depot_User === depotFilter);
-        
-        const recent = [...transFiltered].reverse().slice(0, 100);
-        transTbody.innerHTML = recent.map(t => `<tr>
-            <td>${t.Date || t.Upload_Date ? new Date(t.Upload_Date || t.Date).toLocaleDateString() : '-'}</td>
-            <td><span class="${t.Type === 'INWARD' ? 'status-available' : 'status-not'}">${t.Type || '-'}</span></td>
-            <td>${t.Depot || t.Depot_User || '-'}</td>
-            <td>${t['HUL Code'] || t.HUL_Code || '-'}</td>
-            <td>${t.Basepack || '-'}</td>
-            <td>${t.Quantity || t.Dispatches_QTY || '-'}</td>
-            <td>${t['AWB Code'] || t.AWB_Code || t['Delivery Challan number / Order ID'] || '-'}</td>
-            <td>${t.Order_Status || t.Attempt1_Status || '-'}</td>
-        </tr>`).join('');
-    }
-    
-    function downloadReport() {
-        const ws = XLSX.utils.json_to_sheet(allData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'All_Data');
-        XLSX.writeFile(wb, `WMS_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
-    }
-    
-    document.getElementById('typeFilter').addEventListener('change', () => updateDashboard());
-    document.getElementById('depotFilter').addEventListener('change', () => updateDashboard());
-    
-    loadData();
-    setInterval(loadData, 30000);
-</script>
-</body>
-</html>
+</
