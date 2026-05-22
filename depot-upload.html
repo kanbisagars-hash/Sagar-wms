@@ -100,7 +100,7 @@
 <div class="container">
     <div class="header">
         <h1>◈ LAKMÉ WMS | DEPOT UPLOAD PANEL</h1>
-        <p>📥 Excel/CSV Upload | Data Stored in Browser | Download Backup</p>
+        <p>📥 Cloud Storage | Google Sheet | Multi-Device Sync</p>
     </div>
 
     <div id="loginSection" class="login-box">
@@ -124,19 +124,17 @@
             
             <h3>📥 INWARD (Stock In)</h3>
             <div class="button-group">
-                <button class="btn-template" onclick="downloadTemplate()">📎 Download Inward Template</button>
-                <button class="btn-template" onclick="downloadBackup()">💾 Download Backup</button>
+                <button class="btn-template" onclick="downloadTemplate()">📎 Download Template</button>
             </div>
             <div class="validation-rules">
-                <strong>⚠️ Validation Rules:</strong>
+                <strong>⚠️ Required Columns:</strong>
                 <ul>
-                    <li>All columns: Depot, Basepack, Quantity, PKM, Expiry, EGIR, Remarks</li>
-                    <li>Remarks must be: Good stock | Excess | Shortage | Damage</li>
-                    <li>Date format: DD-MM-YYYY</li>
+                    <li>Depot, Basepack, Quantity, PKM, Expiry (DD-MM-YYYY), EGIR, Remarks</li>
+                    <li>Remarks: Good stock | Excess | Shortage | Damage</li>
                 </ul>
             </div>
             <input type="file" id="inwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadInward()">📤 Upload (Local Storage)</button>
+            <button onclick="uploadInward()">📤 Upload to Cloud</button>
             <div id="inwardStatus" class="status"></div>
 
             <button onclick="logout()" class="logout-btn">🚪 Logout</button>
@@ -145,6 +143,9 @@
 </div>
 
 <script>
+    // ========== YOUR SHEETDB API URL ==========
+    const SHEETDB_URL = 'https://sheetdb.io/api/v1/y1k27fv4roasn';
+    
     const depotPasswords = {
         "Bangalore": "bangalore123",
         "Chennai": "chennai456",
@@ -157,21 +158,22 @@
     let currentDepot = null;
     
     function isValidDate(dateStr) {
-        if (!dateStr || dateStr.trim() === '') return false;
+        if (!dateStr) return false;
         const parts = dateStr.split('-');
         if (parts.length !== 3) return false;
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
         const year = parseInt(parts[2], 10);
-        if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
-        if (day < 1 || day > 31) return false;
-        if (month < 1 || month > 12) return false;
-        if (year < 2000 || year > 2100) return false;
-        return true;
+        return !(isNaN(day) || isNaN(month) || isNaN(year) || day < 1 || day > 31 || month < 1 || month > 12 || year < 2000 || year > 2100);
     }
     
-    function isBlank(val) {
-        return !val || val.toString().trim() === '';
+    function isBlank(val) { return !val || val.toString().trim() === ''; }
+    
+    function showStatus(id, msg, type) {
+        const el = document.getElementById(id);
+        el.innerHTML = msg;
+        el.className = `status ${type}`;
+        setTimeout(() => { if(el) el.innerHTML = ''; }, 4000);
     }
     
     function showToast(msg, color) {
@@ -182,52 +184,31 @@
         setTimeout(() => toast.remove(), 3000);
     }
     
-    function showStatus(elementId, message, type) {
-        const el = document.getElementById(elementId);
-        el.innerHTML = message;
-        el.className = `status ${type}`;
-        setTimeout(() => { if (el) { el.innerHTML = ''; el.className = 'status'; } }, 5000);
-    }
-    
     function downloadTemplate() {
         const headers = ['Depot', 'Basepack', 'Quantity', 'PKM', 'Expiry', 'EGIR', 'Remarks'];
-        const sampleData = [currentDepot || 'Bangalore', 'BP-001', '100', 'BATCH-001', '31-12-2028', 'INV-001', 'Good stock'];
-        let csvContent = headers.join(',') + '\n' + sampleData.join(',') + '\n\n# Instructions: Delete sample row, add your data. All columns required. Date format: DD-MM-YYYY';
-        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const sample = [currentDepot || 'Bangalore', 'BP-001', '100', 'BATCH-001', '31-12-2028', 'INV-001', 'Good stock'];
+        let csv = headers.join(',') + '\n' + sample.join(',');
+        const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = 'inward_template.csv';
         a.click();
         URL.revokeObjectURL(url);
-        showToast('📥 Downloaded inward_template.csv', '#3b82f6');
-    }
-    
-    function downloadBackup() {
-        const key = `wms_Inward_${currentDepot}`;
-        const data = JSON.parse(localStorage.getItem(key) || '[]');
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${currentDepot}_backup_${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(`💾 Downloaded backup for ${currentDepot}`, '#3b82f6');
     }
     
     function login() {
         const depot = document.getElementById('depotSelect').value;
         const password = document.getElementById('passwordInput').value;
-        if (!depot) { showStatus('loginStatus', '❌ Select depot', 'error'); return; }
+        if (!depot) { showStatus('loginStatus', 'Select depot', 'error'); return; }
         if (depotPasswords[depot] === password) {
             currentDepot = depot;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('uploadSection').style.display = 'block';
-            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot} Depot<br><span style="font-size:0.7rem;">💾 Data stored locally | Take backup manually</span>`;
-            showStatus('loginStatus', '✅ Login successful!', 'success');
+            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot}<br>☁️ Cloud Sync Active`;
+            showStatus('loginStatus', 'Login success!', 'success');
         } else {
-            showStatus('loginStatus', '❌ Invalid password', 'error');
+            showStatus('loginStatus', 'Invalid password', 'error');
         }
     }
     
@@ -235,8 +216,6 @@
         currentDepot = null;
         document.getElementById('loginSection').style.display = 'block';
         document.getElementById('uploadSection').style.display = 'none';
-        document.getElementById('passwordInput').value = '';
-        document.getElementById('depotSelect').value = '';
         document.getElementById('inwardFile').value = '';
     }
     
@@ -251,16 +230,15 @@
         reader.readAsArrayBuffer(file);
     }
     
-    function uploadInward() {
+    async function uploadInward() {
         const file = document.getElementById('inwardFile').files[0];
-        if (!file) { alert('❌ Please select a file first'); return; }
+        if (!file) { alert('Select file'); return; }
         
-        parseFile(file, (data) => {
+        parseFile(file, async (data) => {
             let validRows = [];
             
             for (let i = 0; i < data.length; i++) {
                 const row = data[i];
-                
                 if (isBlank(row.Depot)) continue;
                 if (isBlank(row.Basepack)) continue;
                 const qty = parseFloat(row.Quantity);
@@ -281,23 +259,62 @@
                     EGIR: row.EGIR.toString().trim(),
                     Remarks: row.Remarks.toString().trim(),
                     Upload_Date: new Date().toISOString(),
-                    Upload_ID: `${currentDepot}_${Date.now()}`
+                    Depot_User: currentDepot
                 });
             }
             
             if (validRows.length === 0) {
-                showStatus('inwardStatus', '❌ No valid rows found. Check all columns are filled.', 'error');
+                showStatus('inwardStatus', '❌ No valid rows found', 'error');
                 return;
             }
             
-            // Save to localStorage
-            const key = `wms_Inward_${currentDepot}`;
-            let existing = JSON.parse(localStorage.getItem(key) || '[]');
-            existing = [...existing, ...validRows];
-            localStorage.setItem(key, JSON.stringify(existing));
+            showStatus('inwardStatus', '☁️ Uploading to cloud...', 'warning');
             
-            showStatus('inwardStatus', `✅ ${validRows.length} rows saved to local storage!`, 'success');
-            showToast(`💾 ${validRows.length} rows saved! Take backup to share data.`, '#2effbc');
+            try {
+                // First, check if sheet has headers
+                const checkResponse = await fetch(SHEETDB_URL);
+                const existingData = await checkResponse.json();
+                
+                let uploadResponse;
+                if (existingData.length === 0 || !existingData[0].Depot) {
+                    // Sheet is empty or has no headers - create headers first
+                    const headersData = [{
+                        Depot: 'Depot',
+                        Basepack: 'Basepack',
+                        Quantity: 'Quantity',
+                        PKM: 'PKM',
+                        Expiry: 'Expiry',
+                        EGIR: 'EGIR',
+                        Remarks: 'Remarks',
+                        Upload_Date: 'Upload_Date',
+                        Depot_User: 'Depot_User'
+                    }];
+                    await fetch(SHEETDB_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: headersData })
+                    });
+                }
+                
+                // Now upload actual data
+                uploadResponse = await fetch(SHEETDB_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: validRows })
+                });
+                
+                const result = await uploadResponse.json();
+                
+                if (uploadResponse.ok) {
+                    showStatus('inwardStatus', `✅ ${validRows.length} rows uploaded to Google Sheet!`, 'success');
+                    showToast(`☁️ ${validRows.length} rows synced to cloud!`, '#2effbc');
+                } else {
+                    showStatus('inwardStatus', `❌ Upload failed: ${JSON.stringify(result)}`, 'error');
+                }
+            } catch (err) {
+                console.error('Upload error:', err);
+                showStatus('inwardStatus', `❌ Error: ${err.message}`, 'error');
+            }
             
             document.getElementById('inwardFile').value = '';
         });

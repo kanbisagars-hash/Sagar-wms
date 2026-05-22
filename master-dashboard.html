@@ -53,21 +53,8 @@
             border-radius: 20px;
             align-items: flex-end;
         }
-        .filter-group select, .filter-group input {
-            background: #0a0a1a;
-            border: 1px solid #2c3e5e;
-            padding: 8px 15px;
-            border-radius: 25px;
-            color: white;
-        }
-        .btn-primary {
-            background: #2effbc22;
-            border: 1px solid #2effbc;
-            color: #2effbc;
-            padding: 8px 25px;
-            border-radius: 25px;
-            cursor: pointer;
-        }
+        .filter-group select { background: #0a0a1a; border: 1px solid #2c3e5e; padding: 8px 15px; border-radius: 25px; color: white; }
+        .btn-primary { background: #2effbc22; border: 1px solid #2effbc; color: #2effbc; padding: 8px 25px; border-radius: 25px; cursor: pointer; }
         .table-container {
             background: rgba(10, 15, 35, 0.7);
             border-radius: 20px;
@@ -86,8 +73,8 @@
 <body>
 <div class="container">
     <div class="header">
-        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>5 Depots Combined | Local Storage | Real-time</p></div>
-        <div class="badge"><span class="live-dot"></span> LOCAL MODE <span id="syncTime"></span></div>
+        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>Cloud Data | Multi-Device | Real-time</p></div>
+        <div class="badge"><span class="live-dot"></span> CLOUD MODE <span id="syncTime"></span></div>
     </div>
 
     <div class="stats-grid">
@@ -108,40 +95,43 @@
         <table id="depotTable"><thead><tr><th>Depot</th><th>Inward</th><th>Outward</th><th>Net Stock</th><th>Status</th></tr></thead><tbody></tbody></table>
     </div>
 
-    <div class="footer">💾 Data stored in browser local storage | Share backup files for multi-device sync | Last updated: <span id="lastUpdate">--</span></div>
+    <div class="footer">☁️ Data from Google Sheet via SheetDB | Last updated: <span id="lastUpdate">--</span></div>
 </div>
 
 <script>
+    const SHEETDB_URL = 'https://sheetdb.io/api/v1/y1k27fv4roasn';
     const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
-    let allInward = [];
+    let allData = [];
     
-    function loadData() {
-        allInward = [];
-        for (const depot of depots) {
-            const key = `wms_Inward_${depot}`;
-            const data = JSON.parse(localStorage.getItem(key) || '[]');
-            allInward.push(...data);
+    async function loadData() {
+        document.getElementById('syncTime').innerHTML = '🔄 Syncing...';
+        try {
+            const response = await fetch(SHEETDB_URL);
+            const data = await response.json();
+            // Filter out header row if present
+            allData = data.filter(row => row.Depot && row.Depot !== 'Depot');
+            updateDashboard();
+            document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
+            document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
+        } catch (err) {
+            document.getElementById('syncTime').innerHTML = '❌ Error';
+            console.error(err);
         }
-        updateDashboard();
-        document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
-        document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
     }
     
     function updateDashboard() {
         const depotData = depots.map(depot => {
-            const totalIn = allInward.filter(i => i.Depot === depot).reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
-            const totalOut = 0; // Outward not implemented in this version
+            const totalIn = allData.filter(i => i.Depot === depot).reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
+            const totalOut = 0;
             const net = totalIn - totalOut;
             return { depot, inward: totalIn, outward: totalOut, netStock: net };
         });
         
         const totalIn = depotData.reduce((s, d) => s + d.inward, 0);
-        const totalOut = depotData.reduce((s, d) => s + d.outward, 0);
         const netStock = depotData.reduce((s, d) => s + d.netStock, 0);
         const activeCount = depotData.filter(d => d.inward > 0).length;
         
         document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
-        document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
         document.getElementById('netStock').innerHTML = netStock.toLocaleString();
         document.getElementById('activeDepots').innerHTML = activeCount;
         
@@ -157,18 +147,15 @@
         `).join('');
         
         const depotSelect = document.getElementById('depotFilter');
-        depotSelect.innerHTML = '<option value="All">📊 All Depots</option>' + depotData.map(d => `<option value="${d.depot}">🏭 ${d.depot} (${d.netStock.toLocaleString()} units)</option>`).join('');
+        depotSelect.innerHTML = '<option value="All">All Depots</option>' + depotData.map(d => `<option value="${d.depot}">${d.depot} (${d.netStock.toLocaleString()})</option>`).join('');
     }
     
     function downloadReport() {
-        const depotData = depots.map(depot => {
-            const totalIn = allInward.filter(i => i.Depot === depot).reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
-            return { Depot: depot, Inward: totalIn };
-        });
-        const ws = XLSX.utils.json_to_sheet(depotData);
+        const ws = XLSX.utils.json_to_sheet(allData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Depot_Stock_Summary');
+        XLSX.utils.book_append_sheet(wb, ws, 'All_Data');
         XLSX.writeFile(wb, `WMS_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
+        alert('📥 Report downloaded!');
     }
     
     loadData();
