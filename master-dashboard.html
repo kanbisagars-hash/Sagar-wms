@@ -6,84 +6,32 @@
     <title>LAKMÉ WMS | MASTER DASHBOARD</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: linear-gradient(135deg, #0a0a1a 0%, #050510 100%);
-            font-family: 'Segoe UI', sans-serif;
-            color: #eef5ff;
-            padding: 20px;
-        }
-        .container { max-width: 1600px; margin: 0 auto; }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(5, 5, 20, 0.7);
-            border-radius: 20px;
-            border-bottom: 2px solid #2effbc;
-        }
-        .header h1 { background: linear-gradient(135deg, #fff, #2effbc); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .badge { background: rgba(0,0,0,0.5); padding: 8px 20px; border-radius: 50px; border: 1px solid #2effbc; }
-        .live-dot { display: inline-block; width: 10px; height: 10px; background: #2effbc; border-radius: 50%; animation: pulse 1.5s infinite; margin-right: 8px; }
-        @keyframes pulse { 0%,100%{opacity:0.4;} 50%{opacity:1;} }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            background: rgba(10, 15, 35, 0.8);
-            border-radius: 20px;
-            padding: 20px;
-            border-left: 4px solid #2effbc;
-        }
-        .stat-card .value { font-size: 2rem; font-weight: 800; margin-top: 8px; }
-        .filter-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 25px;
-            padding: 15px 20px;
-            background: rgba(5, 5, 20, 0.6);
-            border-radius: 20px;
-        }
-        .filter-group select {
-            background: #0a0a1a;
-            border: 1px solid #2c3e5e;
-            padding: 8px 15px;
-            border-radius: 25px;
-            color: white;
-        }
-        .btn-primary {
-            background: #2effbc22;
-            border: 1px solid #2effbc;
-            color: #2effbc;
-            padding: 8px 25px;
-            border-radius: 25px;
-            cursor: pointer;
-        }
-        .table-container {
-            background: rgba(10, 15, 35, 0.7);
-            border-radius: 20px;
-            padding: 20px;
-            overflow-x: auto;
-            margin-bottom: 25px;
-        }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #1e2a44; font-size: 0.75rem; }
-        th { color: #2effbc; }
-        .footer { text-align: center; margin-top: 30px; font-size: 0.7rem; color: #4a617c; }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{background:#0a0e1a;font-family:'Segoe UI',sans-serif;color:#eef5ff;padding:20px;}
+        .container{max-width:1600px;margin:0 auto;}
+        .header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:30px;padding:20px;background:rgba(5,5,20,0.7);border-radius:20px;border-bottom:2px solid #2effbc;}
+        .header h1{background:linear-gradient(135deg,#fff,#2effbc);-webkit-background-clip:text;background-clip:text;color:transparent;}
+        .badge{background:#0a1022;padding:8px20px;border-radius:50px;border:1px solid #2effbc;}
+        .live-dot{display:inline-block;width:10px;height:10px;background:#2effbc;border-radius:50%;animation:pulse1.5s infinite;margin-right:8px;}
+        @keyframes pulse{0%,100%{opacity:0.4;}50%{opacity:1;}}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;margin-bottom:30px;}
+        .stat-card{background:rgba(10,15,35,0.8);border-radius:20px;padding:20px;border-left:4px solid #2effbc;}
+        .stat-card .value{font-size:2rem;font-weight:800;margin-top:8px;}
+        .filter-bar{display:flex;flex-wrap:wrap;gap:15px;margin-bottom:25px;padding:15px20px;background:rgba(5,5,20,0.6);border-radius:20px;}
+        .filter-group select{background:#0a0a1a;border:1px solid #2c3e5e;padding:8px15px;border-radius:25px;color:white;}
+        .btn-primary{background:#2effbc22;border:1px solid #2effbc;color:#2effbc;padding:8px25px;border-radius:25px;cursor:pointer;}
+        .table-container{background:rgba(10,15,35,0.7);border-radius:20px;padding:20px;overflow-x:auto;margin-bottom:25px;}
+        table{width:100%;border-collapse:collapse;}
+        th,td{padding:10px;text-align:left;border-bottom:1px solid #1e2a44;font-size:0.75rem;}
+        th{color:#2effbc;}
+        .footer{text-align:center;margin-top:30px;font-size:0.7rem;color:#4a617c;}
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>All 5 Depots | Inward + Outward + RTO</p></div>
-        <div class="badge"><span class="live-dot"></span> LIVE <span id="syncTime"></span></div>
+        <div class="badge"><span class="live-dot"></span> LOCAL STORAGE MODE <span id="syncTime"></span></div>
     </div>
 
     <div class="stats-grid">
@@ -96,94 +44,78 @@
     <div class="filter-bar">
         <div class="filter-group"><label>Depot</label><select id="depotFilter"><option value="All">All Depots</option></select></div>
         <div class="filter-group"><label>Type</label><select id="typeFilter"><option value="All">All Types</option><option value="INWARD">INWARD</option><option value="OUTWARD">OUTWARD</option><option value="RTO">RTO</option></select></div>
-        <button class="btn-primary" onclick="loadAllData()">🔄 Refresh</button>
+        <button class="btn-primary" onclick="loadData()">🔄 Refresh</button>
         <button class="btn-primary" onclick="downloadReport()">📥 Download Excel</button>
     </div>
 
     <div class="table-container">
         <h3>📊 ALL TRANSACTIONS</h3>
-        <table id="dataTable">
-            <thead id="tableHeader"></thead>
-            <tbody id="tableBody"></tbody>
-        </table>
+        <table id="dataTable"><thead id="tableHeader"></thead><tbody id="tableBody"></tbody></table>
     </div>
 
-    <div class="footer">☁️ Data from Google Sheets | Last updated: <span id="lastUpdate">--</span></div>
+    <div class="footer">📌 Data is stored in each user's browser. Use 'Export/Import' feature to combine data. | Last updated: <span id="lastUpdate">--</span></div>
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRclDP2FIOOFtBDnTp_HqKgo5mo2tIQ5WNz77gPjSFV0LZxdeHS0yWOdQSbJFO8IfJ/exec';
-    const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
-    const types = ['INWARD', 'OUTWARD', 'RTO'];
+    const DEPOTS = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
+    const TYPES = ['INWARD', 'OUTWARD', 'RTO'];
     let allData = [];
     
-    async function fetchSheetData(depot, type) {
-        try {
-            const url = `${SCRIPT_URL}?depot=${depot}&type=${type}`;
-            const response = await fetch(url);
-            const result = await response.json();
-            return (result.data || []).map(row => ({ ...row, Depot_Name: depot, Type: type }));
-        } catch (err) {
-            console.error(`Error fetching ${depot} ${type}:`, err);
-            return [];
-        }
-    }
+    function getStorageKey(depot, type) { return `wms_${depot}_${type}`; }
     
-    async function loadAllData() {
-        document.getElementById('syncTime').innerHTML = '🔄 Syncing all depots...';
+    function loadData() {
+        document.getElementById('syncTime').innerHTML = '🔄 Loading...';
         allData = [];
-        
-        for (const depot of depots) {
-            for (const type of types) {
-                const data = await fetchSheetData(depot, type);
-                allData.push(...data);
+        for(let depot of DEPOTS) {
+            for(let type of TYPES) {
+                let key = getStorageKey(depot, type);
+                let data = JSON.parse(localStorage.getItem(key) || '[]');
+                data.forEach(row => allData.push({ ...row, Depot_Name: depot, Type: type }));
             }
         }
-        
         updateDashboard();
         document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
         document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
     }
     
     function updateDashboard() {
-        const typeFilter = document.getElementById('typeFilter').value;
-        const depotFilter = document.getElementById('depotFilter').value;
+        let typeFilter = document.getElementById('typeFilter').value;
+        let depotFilter = document.getElementById('depotFilter').value;
         
-        let filtered = allData;
-        if (typeFilter !== 'All') filtered = filtered.filter(d => d.Type === typeFilter);
-        if (depotFilter !== 'All') filtered = filtered.filter(d => d.Depot_Name === depotFilter);
+        let filtered = allData.filter(d => 
+            (typeFilter === 'All' || d.Type === typeFilter) &&
+            (depotFilter === 'All' || d.Depot_Name === depotFilter)
+        );
         
-        const totalIn = allData.filter(d => d.Type === 'INWARD').reduce((s, d) => s + (Number(d['Challan Qty'] || d.Challan_Qty || 0)), 0);
-        const totalOut = allData.filter(d => d.Type === 'OUTWARD').reduce((s, d) => s + (Number(d['Dispatches QTY'] || d.Dispatches_QTY || 0)), 0);
-        const totalRTO = allData.filter(d => d.Type === 'RTO').length;
+        let totalIn = allData.filter(d => d.Type === 'INWARD').reduce((s,d) => s + (Number(d['Challan Qty']||0)),0);
+        let totalOut = allData.filter(d => d.Type === 'OUTWARD').reduce((s,d) => s + (Number(d['Dispatches QTY']||0)),0);
+        let totalRTO = allData.filter(d => d.Type === 'RTO').length;
         
         document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
         document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
         document.getElementById('totalRTO').innerHTML = totalRTO;
         document.getElementById('netStock').innerHTML = (totalIn - totalOut).toLocaleString();
         
-        // Update depot filter dropdown
-        const depotSelect = document.getElementById('depotFilter');
-        depotSelect.innerHTML = '<option value="All">All Depots</option>' + depots.map(d => `<option value="${d}">${d}</option>`).join('');
+        let depotSelect = document.getElementById('depotFilter');
+        depotSelect.innerHTML = '<option value="All">All Depots</option>' + DEPOTS.map(d => `<option value="${d}">${d}</option>`).join('');
         
-        if (filtered.length === 0) {
+        if(filtered.length === 0) {
             document.getElementById('tableHeader').innerHTML = '<tr><th>No Data</th></tr>';
-            document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">No data found. Please upload data from depot panels.</td></tr>';
+            document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">No data found. Please ask depots to upload data.</td></tr>';
             return;
         }
         
-        const allKeys = [...new Set(filtered.flatMap(row => Object.keys(row)))];
-        const displayKeys = allKeys.filter(k => !['Depot_Name'].includes(k));
-        
+        let allKeys = [...new Set(filtered.flatMap(row => Object.keys(row)))];
+        let displayKeys = allKeys.filter(k => !['UploadDate'].includes(k));
         document.getElementById('tableHeader').innerHTML = `<tr>${displayKeys.map(k => `<th>${k}</th>`).join('')}</tr>`;
-        document.getElementById('tableBody').innerHTML = filtered.slice(0, 500).map(row => 
-            `<tr>${displayKeys.map(k => `<td>${row[k] !== undefined && row[k] !== null ? row[k] : ''}</td>`).join('')}</tr>`
+        document.getElementById('tableBody').innerHTML = filtered.slice(0,500).map(row => 
+            `<tr>${displayKeys.map(k => `<td>${row[k] !== undefined ? row[k] : ''}</td>`).join('')}</tr>`
         ).join('');
     }
     
     function downloadReport() {
-        const ws = XLSX.utils.json_to_sheet(allData);
-        const wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.json_to_sheet(allData);
+        let wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'All_Data');
         XLSX.writeFile(wb, `WMS_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
         alert('📥 Report downloaded!');
@@ -192,8 +124,8 @@
     document.getElementById('typeFilter').addEventListener('change', () => updateDashboard());
     document.getElementById('depotFilter').addEventListener('change', () => updateDashboard());
     
-    loadAllData();
-    setInterval(loadAllData, 60000);
+    loadData();
+    setInterval(loadData, 30000);
 </script>
 </body>
 </html>
