@@ -86,8 +86,8 @@
 <body>
 <div class="container">
     <div class="header">
-        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>5 Depots Combined | Cloud Data | Real-time</p></div>
-        <div class="badge"><span class="live-dot"></span> CLOUD MODE <span id="syncTime"></span></div>
+        <div><h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1><p>5 Depots Combined | Local Storage | Real-time</p></div>
+        <div class="badge"><span class="live-dot"></span> LOCAL MODE <span id="syncTime"></span></div>
     </div>
 
     <div class="stats-grid">
@@ -99,51 +99,29 @@
 
     <div class="filter-bar">
         <div class="filter-group"><label>Depot</label><select id="depotFilter"><option value="All">All Depots</option></select></div>
-        <div class="filter-group"><label>From Date</label><input type="date" id="fromDate"></div>
-        <div class="filter-group"><label>To Date</label><input type="date" id="toDate"></div>
-        <button class="btn-primary" onclick="loadData()">🔄 Refresh from Cloud</button>
+        <button class="btn-primary" onclick="loadData()">🔄 Refresh</button>
         <button class="btn-primary" onclick="downloadReport()">📥 Download Excel</button>
     </div>
 
     <div class="table-container">
         <h3>📊 DEPOT-WISE STOCK SUMMARY</h3>
-        <table id="depotTable"><thead><tr><th>Depot</th><th>Inward</th><th>Outward</th><th>RTO Added</th><th>Net Stock</th><th>Status</th></tr></thead><tbody></tbody></table>
+        <table id="depotTable"><thead><tr><th>Depot</th><th>Inward</th><th>Outward</th><th>Net Stock</th><th>Status</th></tr></thead><tbody></tbody></table>
     </div>
 
-    <div class="footer">☁️ Data from Google Sheet Cloud | Multi-Device Sync | Last updated: <span id="lastUpdate">--</span></div>
+    <div class="footer">💾 Data stored in browser local storage | Share backup files for multi-device sync | Last updated: <span id="lastUpdate">--</span></div>
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcbOqv1zk7dS7M8zUydlJ_5KbqHjWec3PvTE33nIHiogGWdVYOw5q6p7x3ip2g_sNS/exec';
     const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
-    let allInward = [], allOutward = [], allRTO = [];
+    let allInward = [];
     
-    async function fetchData(depot, type) {
-        try {
-            const url = `${SCRIPT_URL}?action=get&depot=${depot}&type=${type}`;
-            const response = await fetch(url);
-            const result = await response.json();
-            return result.data || [];
-        } catch (err) {
-            return [];
-        }
-    }
-    
-    async function loadData() {
-        document.getElementById('syncTime').innerHTML = '🔄 Syncing...';
-        allInward = []; allOutward = []; allRTO = [];
-        
+    function loadData() {
+        allInward = [];
         for (const depot of depots) {
-            const [inward, outward, rto] = await Promise.all([
-                fetchData(depot, 'Inward'),
-                fetchData(depot, 'Outward'),
-                fetchData(depot, 'RTO')
-            ]);
-            allInward.push(...inward);
-            allOutward.push(...outward);
-            allRTO.push(...rto);
+            const key = `wms_Inward_${depot}`;
+            const data = JSON.parse(localStorage.getItem(key) || '[]');
+            allInward.push(...data);
         }
-        
         updateDashboard();
         document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
         document.getElementById('lastUpdate').innerHTML = new Date().toLocaleString();
@@ -152,16 +130,15 @@
     function updateDashboard() {
         const depotData = depots.map(depot => {
             const totalIn = allInward.filter(i => i.Depot === depot).reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
-            const totalOut = allOutward.filter(o => o.Depot === depot).reduce((s, o) => s + (Number(o.Quantity) || 0), 0);
-            const rtoAdd = allRTO.filter(r => r.Depot === depot && r.Attempt3_Status && r.Attempt3_Status.toLowerCase().includes('fail')).length;
-            const net = totalIn - totalOut + rtoAdd;
-            return { depot, inward: totalIn, outward: totalOut, rtoAdd, netStock: net };
+            const totalOut = 0; // Outward not implemented in this version
+            const net = totalIn - totalOut;
+            return { depot, inward: totalIn, outward: totalOut, netStock: net };
         });
         
         const totalIn = depotData.reduce((s, d) => s + d.inward, 0);
         const totalOut = depotData.reduce((s, d) => s + d.outward, 0);
         const netStock = depotData.reduce((s, d) => s + d.netStock, 0);
-        const activeCount = depotData.filter(d => d.inward > 0 || d.outward > 0).length;
+        const activeCount = depotData.filter(d => d.inward > 0).length;
         
         document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
         document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
@@ -174,9 +151,8 @@
                 <td><strong>${d.depot}</strong></td>
                 <td>${d.inward.toLocaleString()}</td>
                 <td>${d.outward.toLocaleString()}</td>
-                <td>${d.rtoAdd}</td>
                 <td><strong>${d.netStock.toLocaleString()}</strong></td>
-                <td>${d.netStock < 100 ? '<span class="status-not">⚠️ Low Stock</span>' : '<span class="status-available">✅ Good</span>'}</td>
+                <td>${d.netStock < 100 ? '<span class="status-not">⚠️ Low</span>' : '<span class="status-available">✅ Good</span>'}</td>
             </tr>
         `).join('');
         
@@ -187,18 +163,16 @@
     function downloadReport() {
         const depotData = depots.map(depot => {
             const totalIn = allInward.filter(i => i.Depot === depot).reduce((s, i) => s + (Number(i.Quantity) || 0), 0);
-            const totalOut = allOutward.filter(o => o.Depot === depot).reduce((s, o) => s + (Number(o.Quantity) || 0), 0);
-            const net = totalIn - totalOut;
-            return { Depot: depot, Inward: totalIn, Outward: totalOut, NetStock: net };
+            return { Depot: depot, Inward: totalIn };
         });
         const ws = XLSX.utils.json_to_sheet(depotData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Depot_Stock_Summary');
-        XLSX.writeFile(wb, `WMS_Cloud_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
+        XLSX.writeFile(wb, `WMS_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
     }
     
     loadData();
-    setInterval(loadData, 60000);
+    setInterval(loadData, 30000);
 </script>
 </body>
 </html>

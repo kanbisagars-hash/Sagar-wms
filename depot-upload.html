@@ -100,7 +100,7 @@
 <div class="container">
     <div class="header">
         <h1>◈ LAKMÉ WMS | DEPOT UPLOAD PANEL</h1>
-        <p>📥 Cloud Storage | Google Sheet | Multi-Device Sync</p>
+        <p>📥 Excel/CSV Upload | Data Stored in Browser | Download Backup</p>
     </div>
 
     <div id="loginSection" class="login-box">
@@ -125,6 +125,7 @@
             <h3>📥 INWARD (Stock In)</h3>
             <div class="button-group">
                 <button class="btn-template" onclick="downloadTemplate()">📎 Download Inward Template</button>
+                <button class="btn-template" onclick="downloadBackup()">💾 Download Backup</button>
             </div>
             <div class="validation-rules">
                 <strong>⚠️ Validation Rules:</strong>
@@ -135,7 +136,7 @@
                 </ul>
             </div>
             <input type="file" id="inwardFile" accept=".csv,.xlsx">
-            <button onclick="uploadInward()">📤 Upload to Cloud</button>
+            <button onclick="uploadInward()">📤 Upload (Local Storage)</button>
             <div id="inwardStatus" class="status"></div>
 
             <button onclick="logout()" class="logout-btn">🚪 Logout</button>
@@ -144,8 +145,6 @@
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcbOqv1zk7dS7M8zUydlJ_5KbqHjWec3PvTE33nIHiogGWdVYOw5q6p7x3ip2g_sNS/exec';
-    
     const depotPasswords = {
         "Bangalore": "bangalore123",
         "Chennai": "chennai456",
@@ -204,6 +203,19 @@
         showToast('📥 Downloaded inward_template.csv', '#3b82f6');
     }
     
+    function downloadBackup() {
+        const key = `wms_Inward_${currentDepot}`;
+        const data = JSON.parse(localStorage.getItem(key) || '[]');
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentDepot}_backup_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`💾 Downloaded backup for ${currentDepot}`, '#3b82f6');
+    }
+    
     function login() {
         const depot = document.getElementById('depotSelect').value;
         const password = document.getElementById('passwordInput').value;
@@ -212,7 +224,7 @@
             currentDepot = depot;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('uploadSection').style.display = 'block';
-            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot} Depot<br><span style="font-size:0.7rem;">☁️ Cloud Sync Active</span>`;
+            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot} Depot<br><span style="font-size:0.7rem;">💾 Data stored locally | Take backup manually</span>`;
             showStatus('loginStatus', '✅ Login successful!', 'success');
         } else {
             showStatus('loginStatus', '❌ Invalid password', 'error');
@@ -228,10 +240,6 @@
         document.getElementById('inwardFile').value = '';
     }
     
-    function generateUploadID() {
-        return `${currentDepot}_Inward_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    }
-    
     function parseFile(file, callback) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -243,11 +251,11 @@
         reader.readAsArrayBuffer(file);
     }
     
-    async function uploadInward() {
+    function uploadInward() {
         const file = document.getElementById('inwardFile').files[0];
         if (!file) { alert('❌ Please select a file first'); return; }
         
-        parseFile(file, async (data) => {
+        parseFile(file, (data) => {
             let validRows = [];
             
             for (let i = 0; i < data.length; i++) {
@@ -271,7 +279,9 @@
                     PKM: row.PKM.toString().trim(),
                     Expiry: row.Expiry.toString().trim(),
                     EGIR: row.EGIR.toString().trim(),
-                    Remarks: row.Remarks.toString().trim()
+                    Remarks: row.Remarks.toString().trim(),
+                    Upload_Date: new Date().toISOString(),
+                    Upload_ID: `${currentDepot}_${Date.now()}`
                 });
             }
             
@@ -280,26 +290,14 @@
                 return;
             }
             
-            const uploadID = generateUploadID();
+            // Save to localStorage
+            const key = `wms_Inward_${currentDepot}`;
+            let existing = JSON.parse(localStorage.getItem(key) || '[]');
+            existing = [...existing, ...validRows];
+            localStorage.setItem(key, JSON.stringify(existing));
             
-            try {
-                showStatus('inwardStatus', '☁️ Uploading to cloud...', 'warning');
-                
-                const url = `${SCRIPT_URL}?action=upload&depot=${currentDepot}&type=Inward&uploadID=${uploadID}&rows=${encodeURIComponent(JSON.stringify(validRows))}&timestamp=${encodeURIComponent(new Date().toISOString())}`;
-                
-                const response = await fetch(url);
-                const result = await response.json();
-                
-                if (result.success) {
-                    showStatus('inwardStatus', `✅ ${validRows.length} rows uploaded to Cloud! ID: ${uploadID}`, 'success');
-                    showToast(`☁️ ${validRows.length} rows synced to Google Sheet!`, '#2effbc');
-                } else {
-                    showStatus('inwardStatus', `❌ Cloud upload failed: ${result.error}`, 'error');
-                }
-            } catch (err) {
-                console.error('Upload error:', err);
-                showStatus('inwardStatus', `❌ Connection error: ${err.message}`, 'error');
-            }
+            showStatus('inwardStatus', `✅ ${validRows.length} rows saved to local storage!`, 'success');
+            showToast(`💾 ${validRows.length} rows saved! Take backup to share data.`, '#2effbc');
             
             document.getElementById('inwardFile').value = '';
         });
