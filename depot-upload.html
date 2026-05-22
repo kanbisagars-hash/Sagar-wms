@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAKMÉ WMS | DEPOT UPLOAD PANEL</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a1a 0%, #050510 100%);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #eef5ff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(5, 5, 20, 0.7);
+            border-radius: 20px;
+            border-bottom: 2px solid #2effbc;
+        }
+        .header h1 {
+            background: linear-gradient(135deg, #fff, #2effbc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .header p { font-size: 0.8rem; color: #8fa3c2; margin-top: 8px; }
+        .login-box, .upload-box {
+            background: rgba(15, 25, 45, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(46, 255, 188, 0.3);
+        }
+        input, select {
+            background: #0a0a1a;
+            border: 1px solid #2c3e5e;
+            padding: 12px;
+            border-radius: 12px;
+            color: white;
+            width: 100%;
+            margin: 10px 0;
+            font-size: 1rem;
+        }
+        button {
+            background: #2effbc22;
+            border: 1px solid #2effbc;
+            color: #2effbc;
+            padding: 12px 25px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+        button:hover { background: #2effbc; color: #050510; box-shadow: 0 0 20px #2effbc; }
+        .depot-name { color: #2effbc; font-size: 1.2rem; margin-bottom: 20px; text-align: center; }
+        .status { margin-top: 10px; padding: 10px; border-radius: 10px; text-align: center; }
+        .success { background: #2effbc22; color: #2effbc; }
+        .error { background: #ff444422; color: #ff6666; }
+        h3 { color: #2effbc; margin: 15px 0 10px 0; }
+        hr { border-color: #2c3e5e; margin: 15px 0; }
+        .logout-btn {
+            background: #ff444422;
+            border-color: #ff6666;
+            color: #ff6666;
+            margin-top: 20px;
+        }
+        .logout-btn:hover { background: #ff4444; color: white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>◈ LAKMÉ WMS | DEPOT UPLOAD PANEL</h1>
+        <p>Upload Inward, Outward & RTO | Auto Tracking ID | Only Your Depot</p>
+    </div>
+
+    <!-- Login Section -->
+    <div id="loginSection" class="login-box">
+        <h3 style="color:#2effbc; margin-bottom:20px; text-align:center;">🔐 Depot Login</h3>
+        <select id="depotSelect">
+            <option value="">Select Your Depot</option>
+            <option value="Bangalore">🏭 Bangalore Depot</option>
+            <option value="Chennai">🏭 Chennai Depot</option>
+            <option value="Kolkata">🏭 Kolkata Depot</option>
+            <option value="Delhi">🏭 Delhi Depot</option>
+            <option value="Mumbai">🏭 Mumbai Depot</option>
+        </select>
+        <input type="password" id="passwordInput" placeholder="Enter Password">
+        <button onclick="login()">🔐 Login</button>
+        <div id="loginStatus" class="status"></div>
+    </div>
+
+    <!-- Upload Section (After Login) -->
+    <div id="uploadSection" style="display:none;">
+        <div class="upload-box">
+            <div class="depot-name" id="loggedDepot"></div>
+            
+            <h3>📥 INWARD (Stock In)</h3>
+            <p style="font-size:0.7rem; color:#8fa3c2;">CSV Columns: Basepack, Quantity, Date, PKM, ExpiryDate, Remarks</p>
+            <input type="file" id="inwardFile" accept=".csv,.xlsx">
+            <button onclick="uploadInward()">📤 Upload Inward</button>
+            <div id="inwardStatus" class="status"></div>
+
+            <hr>
+
+            <h3>📤 OUTWARD (Dispatch)</h3>
+            <p style="font-size:0.7rem; color:#8fa3c2;">CSV Columns: HUL_Code, Basepack, Quantity, AWB_Code, Date</p>
+            <input type="file" id="outwardFile" accept=".csv,.xlsx">
+            <button onclick="uploadOutward()">📤 Upload Outward</button>
+            <div id="outwardStatus" class="status"></div>
+
+            <hr>
+
+            <h3>🔄 RTO (Returns - 3 Attempts)</h3>
+            <p style="font-size:0.7rem; color:#8fa3c2;">CSV Columns: HUL_Code, Basepack, AWB_Code, Attempt1_Status, Attempt2_Status, Attempt3_Status, Date</p>
+            <input type="file" id="rtoFile" accept=".csv,.xlsx">
+            <button onclick="uploadRTO()">📤 Upload RTO</button>
+            <div id="rtoStatus" class="status"></div>
+
+            <button onclick="logout()" class="logout-btn">🚪 Logout</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Depot Passwords
+    const depotPasswords = {
+        "Bangalore": "bangalore123",
+        "Chennai": "chennai456",
+        "Kolkata": "kolkata789",
+        "Delhi": "delhi101",
+        "Mumbai": "mumbai202"
+    };
+    
+    let currentDepot = null;
+    
+    // Generate Unique Upload ID
+    function generateUploadID(type) {
+        const date = new Date();
+        const dateStr = date.toISOString().slice(0,10);
+        const timeStr = date.toTimeString().slice(0,8).replace(/:/g, '-');
+        const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+        return `${currentDepot}_${type}_${dateStr}_${timeStr}_${random}`;
+    }
+    
+    function login() {
+        const depot = document.getElementById('depotSelect').value;
+        const password = document.getElementById('passwordInput').value;
+        
+        if (!depot) {
+            showStatus('loginStatus', '❌ Please select your depot', 'error');
+            return;
+        }
+        
+        if (depotPasswords[depot] === password) {
+            currentDepot = depot;
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('loggedDepot').innerHTML = `✅ Logged in: ${depot} Depot <span style="font-size:0.7rem;">| You can only upload for ${depot}</span>`;
+            showStatus('loginStatus', '✅ Login successful!', 'success');
+        } else {
+            showStatus('loginStatus', '❌ Invalid password. Contact admin.', 'error');
+        }
+    }
+    
+    function logout() {
+        currentDepot = null;
+        document.getElementById('loginSection').style.display = 'block';
+        document.getElementById('uploadSection').style.display = 'none';
+        document.getElementById('passwordInput').value = '';
+        document.getElementById('depotSelect').value = '';
+        // Clear file inputs
+        document.getElementById('inwardFile').value = '';
+        document.getElementById('outwardFile').value = '';
+        document.getElementById('rtoFile').value = '';
+    }
+    
+    function showStatus(elementId, message, type) {
+        const el = document.getElementById(elementId);
+        el.innerHTML = message;
+        el.className = `status ${type}`;
+        setTimeout(() => { 
+            if (el) {
+                el.innerHTML = ''; 
+                el.className = 'status'; 
+            }
+        }, 5000);
+    }
+    
+    function parseFile(file, callback) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+            callback(json);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
+    function saveToLocalStorage(type, data, uploadID) {
+        let key = `wms_${type}_${currentDepot}`;
+        let existing = JSON.parse(localStorage.getItem(key) || '[]');
+        
+        // Add uploadID and metadata to each row
+        let dataWithID = data.map(row => ({
+            ...row,
+            Upload_ID: uploadID,
+            Upload_Date: new Date().toISOString(),
+            Upload_Type: type,
+            Depot: currentDepot
+        }));
+        
+        let newData = [...existing, ...dataWithID];
+        localStorage.setItem(key, JSON.stringify(newData));
+        
+        // Save to master upload log for admin
+        let masterLog = JSON.parse(localStorage.getItem('wms_master_upload_log') || '[]');
+        masterLog.push({
+            Upload_ID: uploadID,
+            Depot: currentDepot,
+            Type: type,
+            RowCount: data.length,
+            Upload_Date: new Date().toISOString()
+        });
+        localStorage.setItem('wms_master_upload_log', JSON.stringify(masterLog));
+        
+        return dataWithID.length;
+    }
+    
+    function uploadInward() {
+        const file = document.getElementById('inwardFile').files[0];
+        if (!file) { alert('❌ Please select a file first'); return; }
+        
+        parseFile(file, (data) => {
+            let uploadID = generateUploadID('Inward');
+            let formattedData = data.map(row => ({
+                Basepack: row.Basepack || row.basepack || 'Unknown',
+                Quantity: parseFloat(row.Quantity || row.quantity || 0),
+                Date: row.Date || row.date || new Date().toISOString().slice(0,10),
+                PKM: row.PKM || row.pkm || '',
+                ExpiryDate: row.ExpiryDate || row.expiry_date || '',
+                Remarks: row.Remarks || row.remarks || ''
+            })).filter(r => r.Quantity > 0);
+            
+            if (formattedData.length === 0) {
+                showStatus('inwardStatus', '❌ No valid data found', 'error');
+                return;
+            }
+            
+            let count = saveToLocalStorage('Inward', formattedData, uploadID);
+            showStatus('inwardStatus', `✅ Uploaded ${count} rows | ID: ${uploadID}`, 'success');
+            document.getElementById('inwardFile').value = '';
+        });
+    }
+    
+    function uploadOutward() {
+        const file = document.getElementById('outwardFile').files[0];
+        if (!file) { alert('❌ Please select a file first'); return; }
+        
+        parseFile(file, (data) => {
+            let uploadID = generateUploadID('Outward');
+            let formattedData = data.map(row => ({
+                HUL_Code: row.HUL_Code || row.hul_code || 'Unknown',
+                Basepack: row.Basepack || row.basepack || 'Unknown',
+                Quantity: parseFloat(row.Quantity || row.quantity || 0),
+                AWB_Code: row.AWB_Code || row.awb_code || '',
+                Date: row.Date || row.date || new Date().toISOString().slice(0,10)
+            })).filter(r => r.Quantity > 0);
+            
+            if (formattedData.length === 0) {
+                showStatus('outwardStatus', '❌ No valid data found', 'error');
+                return;
+            }
+            
+            let count = saveToLocalStorage('Outward', formattedData, uploadID);
+            showStatus('outwardStatus', `✅ Uploaded ${count} rows | ID: ${uploadID}`, 'success');
+            document.getElementById('outwardFile').value = '';
+        });
+    }
+    
+    function uploadRTO() {
+        const file = document.getElementById('rtoFile').files[0];
+        if (!file) { alert('❌ Please select a file first'); return; }
+        
+        parseFile(file, (data) => {
+            let uploadID = generateUploadID('RTO');
+            let formattedData = data.map(row => ({
+                HUL_Code: row.HUL_Code || row.hul_code || 'Unknown',
+                Basepack: row.Basepack || row.basepack || 'Unknown',
+                Original_AWB: row.AWB_Code || row.awb_code || '',
+                Attempt1_Status: row.Attempt1_Status || row.attempt1_status || '',
+                Attempt2_Status: row.Attempt2_Status || row.attempt2_status || '',
+                Attempt3_Status: row.Attempt3_Status || row.attempt3_status || '',
+                Date: row.Date || row.date || new Date().toISOString().slice(0,10)
+            }));
+            
+            if (formattedData.length === 0) {
+                showStatus('rtoStatus', '❌ No valid data found', 'error');
+                return;
+            }
+            
+            let count = saveToLocalStorage('RTO', formattedData, uploadID);
+            showStatus('rtoStatus', `✅ Uploaded ${count} rows | ID: ${uploadID}`, 'success');
+            document.getElementById('rtoFile').value = '';
+        });
+    }
+</script>
+</body>
+</html>

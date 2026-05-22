@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAKMÉ WMS | MASTER DASHBOARD + ADMIN DELETE</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a1a 0%, #050510 100%);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #eef5ff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(5, 5, 20, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border-bottom: 2px solid #2effbc;
+        }
+        .header h1 {
+            background: linear-gradient(135deg, #fff, #2effbc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .header p { font-size: 0.7rem; color: #8fa3c2; margin-top: 5px; }
+        .badge {
+            background: rgba(0,0,0,0.5);
+            padding: 8px 20px;
+            border-radius: 50px;
+            border: 1px solid #2effbc;
+        }
+        .live-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #2effbc;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+            margin-right: 8px;
+        }
+        @keyframes pulse { 0%,100%{opacity:0.4;} 50%{opacity:1;} }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(10, 15, 35, 0.8);
+            border-radius: 20px;
+            padding: 20px;
+            border-left: 4px solid #2effbc;
+        }
+        .stat-card h4 { font-size: 0.7rem; text-transform: uppercase; color: #8fa3c2; letter-spacing: 1px; }
+        .stat-card .value { font-size: 2rem; font-weight: 800; margin-top: 8px; }
+        
+        /* Filters */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 15px 20px;
+            background: rgba(5, 5, 20, 0.6);
+            border-radius: 20px;
+            align-items: flex-end;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 0.65rem; text-transform: uppercase; color: #8fa3c2; }
+        .filter-group select, .filter-group input {
+            background: #0a0a1a;
+            border: 1px solid #2c3e5e;
+            padding: 8px 15px;
+            border-radius: 25px;
+            color: white;
+        }
+        .btn-primary {
+            background: #2effbc22;
+            border: 1px solid #2effbc;
+            color: #2effbc;
+            padding: 8px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-primary:hover { background: #2effbc; color: #050510; }
+        .btn-danger {
+            background: #ff444422;
+            border: 1px solid #ff6666;
+            color: #ff6666;
+            padding: 6px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .btn-danger:hover { background: #ff4444; color: white; }
+        
+        /* Tables */
+        .table-container {
+            background: rgba(10, 15, 35, 0.7);
+            border-radius: 20px;
+            padding: 20px;
+            overflow-x: auto;
+            margin-bottom: 25px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1e2a44; font-size: 0.8rem; }
+        th { color: #2effbc; font-weight: 600; }
+        .status-available { background: #2effbc22; color: #2effbc; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        .status-not { background: #ff444422; color: #ff6666; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        .upload-row { background: #2effbc08; }
+        
+        /* Admin Section */
+        .admin-section { border-top: 2px solid #ff6666; margin-top: 10px; padding-top: 20px; }
+        .admin-title { color: #ff6666; margin-bottom: 15px; }
+        .search-box { margin-bottom: 15px; }
+        .search-box input {
+            background: #0a0a1a;
+            border: 1px solid #ff6666;
+            padding: 10px 15px;
+            border-radius: 25px;
+            color: white;
+            width: 300px;
+        }
+        
+        .footer { text-align: center; margin-top: 30px; font-size: 0.7rem; color: #4a617c; }
+        code { background: #0a0a1a; padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; }
+        
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .filter-bar { flex-direction: column; align-items: stretch; }
+            .search-box input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>◈ LAKMÉ WMS | MASTER DASHBOARD</h1>
+            <p>5 Depots Combined Data | Real-time Stock | Admin Delete</p>
+        </div>
+        <div class="badge">
+            <span class="live-dot"></span> ADMIN MODE
+            <div style="font-size: 0.7rem;" id="syncTime"></div>
+        </div>
+    </div>
+
+    <!-- KPI Stats -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><h4>📥 Total Inward</h4><div class="value" id="totalInward">0</div></div>
+        <div class="stat-card"><h4>📤 Total Outward</h4><div class="value" id="totalOutward">0</div></div>
+        <div class="stat-card"><h4>📦 Net Stock</h4><div class="value" id="netStock">0</div></div>
+        <div class="stat-card"><h4>🏭 Active Depots</h4><div class="value" id="activeDepots">0</div></div>
+        <div class="stat-card"><h4>📋 Total Uploads</h4><div class="value" id="totalUploads">0</div></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+        <div class="filter-group"><label>Depot</label><select id="depotFilter"><option value="All">All Depots</option></select></div>
+        <div class="filter-group"><label>From Date</label><input type="date" id="fromDate"></div>
+        <div class="filter-group"><label>To Date</label><input type="date" id="toDate"></div>
+        <button class="btn-primary" onclick="applyFilters()">🔍 Apply Filters</button>
+        <button class="btn-primary" onclick="downloadReport()">📥 Download Excel Report</button>
+        <button class="btn-primary" onclick="refreshAll()">🔄 Refresh</button>
+    </div>
+
+    <!-- Depot Wise Stock Summary -->
+    <div class="table-container">
+        <h3>📊 DEPOT-WISE STOCK SUMMARY</h3>
+        <table id="depotTable">
+            <thead><tr><th>Depot</th><th>Inward (Qty)</th><th>Outward (Qty)</th><th>RTO Added</th><th>Net Stock</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Basepack Wise Stock -->
+    <div class="table-container">
+        <h3>📦 BASEPACK-WISE STOCK (All Depots)</h3>
+        <table id="stockTable">
+            <thead><tr><th>Basepack</th><th>Depot</th><th>Inward</th><th>Outward</th><th>Net Stock</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- ADMIN DELETE SECTION -->
+    <div class="table-container admin-section">
+        <h3 class="admin-title">🗑️ ADMIN DELETE PANEL (Only You)</h3>
+        <div class="search-box">
+            <input type="text" id="searchUploadID" placeholder="🔍 Search by Upload ID, Depot, or Type...">
+        </div>
+        <table id="uploadLogTable">
+            <thead><tr><th>Upload ID</th><th>Depot</th><th>Type</th><th>Rows</th><th>Upload Date</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <p style="margin-top: 10px; font-size: 0.7rem; color: #ff8888;">⚠️ Delete action cannot be undone. Click delete to remove specific upload batch.</p>
+    </div>
+
+    <div class="footer">
+        🔐 <strong>Admin Only</strong> - You can delete any upload batch | Data stored in browser LocalStorage
+    </div>
+</div>
+
+<script>
+    const depots = ['Bangalore', 'Chennai', 'Kolkata', 'Delhi', 'Mumbai'];
+    let currentFilter = { depot: 'All', fromDate: '', toDate: '' };
+    
+    // ========== LOAD DATA FROM LOCALSTORAGE ==========
+    function loadDepotData(type, depot) {
+        let key = `wms_${type}_${depot}`;
+        let data = JSON.parse(localStorage.getItem(key) || '[]');
+        return data;
+    }
+    
+    function loadAllData() {
+        let allInward = [];
+        let allOutward = [];
+        let allRTO = [];
+        
+        depots.forEach(depot => {
+            let inward = loadDepotData('Inward', depot);
+            let outward = loadDepotData('Outward', depot);
+            let rto = loadDepotData('RTO', depot);
+            allInward.push(...inward);
+            allOutward.push(...outward);
+            allRTO.push(...rto);
+        });
+        
+        return { inward: allInward, outward: allOutward, rto: allRTO };
+    }
+    
+    // ========== CALCULATE DEPOT WISE STOCK ==========
+    function calculateDepotWise() {
+        let result = [];
+        depots.forEach(depot => {
+            let inward = loadDepotData('Inward', depot);
+            let outward = loadDepotData('Outward', depot);
+            let rto = loadDepotData('RTO', depot);
+            
+            let totalIn = inward.reduce((s, i) => s + (i.Quantity || 0), 0);
+            let totalOut = outward.reduce((s, i) => s + (i.Quantity || 0), 0);
+            let rtoAdd = rto.filter(r => {
+                let a3 = r.Attempt3_Status || '';
+                return a3.toLowerCase().includes('fail');
+            }).length;
+            let net = totalIn - totalOut + rtoAdd;
+            
+            result.push({ depot, inward: totalIn, outward: totalOut, rtoAdd, netStock: net });
+        });
+        return result;
+    }
+    
+    // ========== CALCULATE BASEPACK WISE STOCK ==========
+    function calculateBasepackWise() {
+        let basepackMap = new Map();
+        
+        depots.forEach(depot => {
+            let inward = loadDepotData('Inward', depot);
+            let outward = loadDepotData('Outward', depot);
+            
+            inward.forEach(item => {
+                let key = `${item.Basepack}_${depot}`;
+                if (!basepackMap.has(key)) basepackMap.set(key, { basepack: item.Basepack, depot: depot, inward: 0, outward: 0 });
+                basepackMap.get(key).inward += (item.Quantity || 0);
+            });
+            
+            outward.forEach(item => {
+                let key = `${item.Basepack}_${depot}`;
+                if (!basepackMap.has(key)) basepackMap.set(key, { basepack: item.Basepack, depot: depot, inward: 0, outward: 0 });
+                basepackMap.get(key).outward += (item.Quantity || 0);
+            });
+        });
+        
+        let result = [];
+        for (let [key, data] of basepackMap) {
+            result.push({
+                Basepack: data.basepack,
+                Depot: data.depot,
+                Inward: data.inward,
+                Outward: data.outward,
+                NetStock: data.inward - data.outward
+            });
+        }
+        return result.sort((a, b) => b.NetStock - a.NetStock);
+    }
+    
+    // ========== GET UPLOAD LOG ==========
+    function getUploadLog() {
+        return JSON.parse(localStorage.getItem('wms_master_upload_log') || '[]');
+    }
+    
+    // ========== DELETE UPLOAD ==========
+    function deleteUpload(uploadID, depot, type) {
+        if (confirm(`⚠️ WARNING: Delete "${uploadID}" ?\n\nDepot: ${depot}\nType: ${type}\n\nThis action cannot be undone!`)) {
+            let key = `wms_${type}_${depot}`;
+            let existing = JSON.parse(localStorage.getItem(key) || '[]');
+            let filtered = existing.filter(row => row.Upload_ID !== uploadID);
+            localStorage.setItem(key, JSON.stringify(filtered));
+            
+            // Remove from master log
+            let log = JSON.parse(localStorage.getItem('wms_master_upload_log') || '[]');
+            let newLog = log.filter(entry => entry.Upload_ID !== uploadID);
+            localStorage.setItem('wms_master_upload_log', JSON.stringify(newLog));
+            
+            refreshAll();
+            showToast(`✅ Deleted: ${uploadID}`);
+        }
+    }
+    
+    function showToast(msg) {
+        let toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#ff4444; color:white; padding:12px 20px; border-radius:10px; z-index:9999; font-size:0.8rem;';
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    // ========== UPDATE DASHBOARD ==========
+    function updateKPIs() {
+        let depotData = calculateDepotWise();
+        let totalIn = depotData.reduce((s, d) => s + d.inward, 0);
+        let totalOut = depotData.reduce((s, d) => s + d.outward, 0);
+        let netStock = depotData.reduce((s, d) => s + d.netStock, 0);
+        let activeCount = depotData.filter(d => d.inward > 0 || d.outward > 0).length;
+        let totalUploads = getUploadLog().length;
+        
+        document.getElementById('totalInward').innerHTML = totalIn.toLocaleString();
+        document.getElementById('totalOutward').innerHTML = totalOut.toLocaleString();
+        document.getElementById('netStock').innerHTML = netStock.toLocaleString();
+        document.getElementById('activeDepots').innerHTML = activeCount;
+        document.getElementById('totalUploads').innerHTML = totalUploads;
+    }
+    
+    function updateDepotTable() {
+        let depotData = calculateDepotWise();
+        let tbody = document.querySelector('#depotTable tbody');
+        tbody.innerHTML = depotData.map(d => `
+            <tr>
+                <td><strong>🏭 ${d.depot}</strong></td>
+                <td>${d.inward.toLocaleString()}</td>
+                <td>${d.outward.toLocaleString()}</td>
+                <td>${d.rtoAdd}</td>
+                <td><strong>${d.netStock.toLocaleString()}</strong></td>
+                <td>${d.netStock < 100 ? '<span class="status-not">⚠️ Low Stock</span>' : '<span class="status-available">✅ Good</span>'}</td>
+            </tr>
+        `).join('');
+        
+        // Update depot filter dropdown
+        let depotSelect = document.getElementById('depotFilter');
+        depotSelect.innerHTML = '<option value="All">📊 All Depots</option>' + 
+            depotData.map(d => `<option value="${d.depot}">🏭 ${d.depot} (${d.netStock.toLocaleString()} units)</option>`).join('');
+    }
+    
+    function updateStockTable() {
+        let stockData = calculateBasepackWise();
+        let tbody = document.querySelector('#stockTable tbody');
+        if (stockData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">No data. Upload files from depot panel.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = stockData.slice(0, 100).map(s => `
+            <tr>
+                <td><code>${s.Basepack}</code></td>
+                <td>${s.Depot}</td>
+                <td>${s.Inward.toLocaleString()}</td>
+                <td>${s.Outward.toLocaleString()}</td>
+                <td><strong>${s.NetStock.toLocaleString()}</strong></td>
+            </tr>
+        `).join('');
+    }
+    
+    function updateUploadLogTable() {
+        let logs = getUploadLog();
+        let searchTerm = document.getElementById('searchUploadID')?.value.toLowerCase() || '';
+        
+        let filtered = logs.filter(log => 
+            log.Upload_ID.toLowerCase().includes(searchTerm) ||
+            log.Depot.toLowerCase().includes(searchTerm) ||
+            log.Type.toLowerCase().includes(searchTerm)
+        );
+        
+        let tbody = document.querySelector('#uploadLogTable tbody');
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No uploads found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = filtered.map(log => `
+            <tr class="upload-row">
+                <td><code style="font-size:0.7rem;">${log.Upload_ID}</code></td>
+                <td><strong>${log.Depot}</strong></td>
+                <td><span class="${log.Type === 'Inward' ? 'status-available' : 'status-not'}">${log.Type}</span></td>
+                <td>${log.RowCount}</td>
+                <td>${new Date(log.Upload_Date).toLocaleString()}</td>
+                <td><button class="btn-danger" onclick="deleteUpload('${log.Upload_ID}', '${log.Depot}', '${log.Type}')">🗑️ Delete</button></td>
+            </tr>
+        `).join('');
+    }
+    
+    function refreshAll() {
+        updateKPIs();
+        updateDepotTable();
+        updateStockTable();
+        updateUploadLogTable();
+        document.getElementById('syncTime').innerHTML = new Date().toLocaleTimeString();
+    }
+    
+    function applyFilters() {
+        let depotFilter = document.getElementById('depotFilter').value;
+        let fromDate = document.getElementById('fromDate').value;
+        let toDate = document.getElementById('toDate').value;
+        
+        currentFilter = { depot: depotFilter, fromDate, toDate };
+        
+        // For now, just refresh. Full date filtering can be added later.
+        refreshAll();
+    }
+    
+    function downloadReport() {
+        let depotData = calculateDepotWise();
+        let basepackData = calculateBasepackWise();
+        let logs = getUploadLog();
+        
+        let ws1 = XLSX.utils.json_to_sheet(depotData);
+        let ws2 = XLSX.utils.json_to_sheet(basepackData);
+        let ws3 = XLSX.utils.json_to_sheet(logs);
+        
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws1, 'Depot_Stock_Summary');
+        XLSX.utils.book_append_sheet(wb, ws2, 'Basepack_Stock');
+        XLSX.utils.book_append_sheet(wb, ws3, 'Upload_History');
+        
+        XLSX.writeFile(wb, `WMS_Master_Report_${new Date().toISOString().slice(0,19)}.xlsx`);
+        showToast('📥 Report downloaded!');
+    }
+    
+    // Search listener
+    document.getElementById('searchUploadID')?.addEventListener('input', () => updateUploadLogTable());
+    
+    // Auto refresh every 30 seconds
+    refreshAll();
+    setInterval(refreshAll, 30000);
+</script>
+</body>
+</html>
